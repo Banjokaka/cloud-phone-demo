@@ -407,7 +407,7 @@
         <div class="stats-row"><span>分辨率:</span><span id="stat-resolution">--</span></div>
       </div>
       <div id="touch-coords">x:0 y:0</div>
-      <button id="btn-rotate-view" title="切换横竖屏">↻</button>
+      <button id="btn-rotate-view" title="仅切换播放器显示比例，不旋转云手机">↔</button>
     </div>
   </div>
 
@@ -1249,12 +1249,10 @@ document.getElementById('btn-rotate-view').addEventListener('click', function() 
   const container = document.getElementById('player-container');
   container.classList.toggle('landscape');
   const isLandscape = container.classList.contains('landscape');
-  this.textContent = isLandscape ? '↺' : '↻';
-  if (sdkInstance) {
-    try {
-      sdkInstance.rotateScreen(isLandscape ? 'landscape' : 'portrait');
-    } catch(e) { /* 方法可能不存在 */ }
-  }
+  this.textContent = isLandscape ? '↕' : '↔';
+  this.title = isLandscape ? '切回竖屏显示比例' : '切到横屏显示比例';
+  log(`播放器显示比例已切换为 ${isLandscape ? '横屏 16:9' : '竖屏 9:16'}。如需旋转云手机系统，请使用右侧「操控输入」里的 rotateScreen。`, 'info');
+  sdkInstance?.updateVideoRenderSize?.();
 });
 document.getElementById('btn-toggle-sidebar').addEventListener('click', function() {
   const sidebar = document.getElementById('sidebar');
