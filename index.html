@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>云手机 H5 SDK 调试工具</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --primary: #e94560;
+    --accent: #53a8b6;
+    --text: #eee;
+    --text2: #aab;
+    --border: #2a2a4a;
+    --success: #2ecc71;
+    --warn: #f39c12;
+    --error: #e74c3c;
+    --radius: 8px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  /* Top Bar */
+  #topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    min-height: 48px;
+  }
+  #topbar h1 { font-size: 16px; font-weight: 600; white-space: nowrap; }
+  #topbar .badge {
+    font-size: 11px; padding: 3px 10px; border-radius: 12px;
+    font-weight: 600; white-space: nowrap;
+  }
+  .badge-disconnected { background: #555; color: #ccc; }
+  .badge-connecting { background: var(--warn); color: #000; }
+  .badge-connected { background: var(--success); color: #000; }
+  .badge-error { background: var(--error); color: #fff; }
+  #topbar .spacer { flex: 1; }
+  #topbar button {
+    padding: 5px 14px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text); cursor: pointer;
+    font-size: 12px; font-weight: 500; white-space: nowrap;
+  }
+  #topbar button:hover { background: var(--primary); border-color: var(--primary); }
+  #topbar button.danger:hover { background: var(--error); border-color: var(--error); }
+
+  /* Layout */
+  #main {
+    display: flex; flex: 1; overflow: hidden;
+  }
+
+  /* Sidebar */
+  #sidebar {
+    width: 340px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 12px;
+    display: flex; flex-direction: column; gap: 12px;
+    transition: width 0.2s, padding 0.2s, opacity 0.2s;
+  }
+  #sidebar.collapsed {
+    width: 0; padding: 0; overflow: hidden; opacity: 0;
+    border-right: none;
+  }
+  #sidebar h3 {
+    font-size: 13px; color: var(--accent); text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 4px;
+  }
+  #sidebar label {
+    font-size: 11px; color: var(--text2); display: block; margin-top: 6px;
+  }
+  #sidebar input, #sidebar select {
+    width: 100%; padding: 6px 8px; margin-top: 2px;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; font-size: 12px; font-family: var(--mono);
+  }
+  #sidebar input:focus { border-color: var(--accent); outline: none; }
+  #sidebar .hint { font-size: 10px; color: var(--text2); margin-top: 2px; }
+  #sidebar .section {
+    background: var(--surface2); border-radius: var(--radius); padding: 10px;
+  }
+  #sidebar .section summary {
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    color: var(--accent); user-select: none;
+  }
+
+  /* Center: 播放器 */
+  #center-panel {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    min-width: 0; padding: 12px; justify-content: center;
+    background: var(--bg);
+  }
+  /* 不干预 SDK 内部的元素定位，否则会破坏触控事件层 */
+
+  /* Right API Panel — 竖向排列 */
+  #api-panel {
+    width: 360px; flex-shrink: 0;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  #api-panel.collapsed {
+    width: 0; overflow: hidden; border-left: none;
+  }
+  .api-category {
+    border-bottom: 1px solid var(--border);
+  }
+  .api-category-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; cursor: pointer; user-select: none;
+    background: var(--surface2); font-size: 12px; font-weight: 600;
+    color: var(--accent); position: sticky; top: 0; z-index: 2;
+  }
+  .api-category-header:hover { opacity: 0.85; }
+  .api-category-header .arrow { font-size: 10px; transition: transform 0.15s; }
+  .api-category.open .api-category-header .arrow { transform: rotate(90deg); }
+  .api-category-body {
+    display: none; flex-direction: column; gap: 6px;
+    padding: 8px;
+  }
+  .api-category.open .api-category-body { display: flex; }
+
+  /* API Card (窄版) */
+  .api-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .api-card h4 {
+    font-size: 12px; color: var(--accent);
+    font-family: var(--mono); margin: 0;
+  }
+  .api-card .desc { font-size: 10px; color: var(--text2); line-height: 1.3; }
+  .api-card .params { display: flex; flex-direction: column; gap: 3px; }
+  .api-card .params label { font-size: 9px; color: var(--text2); }
+  .api-card .params input, .api-card .params select, .api-card .params textarea {
+    width: 100%; padding: 4px 6px;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 3px;
+    font-size: 10px; font-family: var(--mono);
+  }
+  .api-card .params textarea { min-height: 48px; resize: vertical; }
+  .api-card .params input:focus, .api-card .params textarea:focus { border-color: var(--accent); outline: none; }
+  .api-card .btn-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .api-card button {
+    padding: 4px 10px; border-radius: 3px; border: 1px solid var(--border);
+    background: var(--primary); color: #fff; cursor: pointer;
+    font-size: 10px; font-weight: 600;
+  }
+  .api-card button:hover { opacity: 0.85; }
+  .api-card .result {
+    font-size: 9px; font-family: var(--mono);
+    color: var(--text2); max-height: 60px; overflow-y: auto;
+    background: var(--surface); padding: 3px 5px; border-radius: 3px;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .api-card .result.success { color: var(--success); }
+  .api-card .result.error { color: var(--error); }
+
+  /* Bottom Log */
+  #log-panel {
+    height: 180px; flex-shrink: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  #log-header {
+    display: flex; align-items: center; padding: 6px 12px;
+    border-bottom: 1px solid var(--border); gap: 8px;
+  }
+  #log-header h3 { font-size: 12px; flex: 1; }
+  #log-header button { font-size: 10px; padding: 3px 10px; border-radius: 4px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); cursor: pointer; }
+  #log-header button:hover { background: var(--primary); }
+  #log-header label { font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  #log-output {
+    flex: 1; overflow-y: auto; padding: 6px 12px;
+    font-family: var(--mono); font-size: 11px;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .log-line { padding: 2px 0; border-bottom: 1px solid #1a1a2e; }
+  .log-line.info { color: var(--text2); }
+  .log-line.success { color: var(--success); }
+  .log-line.warn { color: var(--warn); }
+  .log-line.error { color: var(--error); }
+  .log-line.event { color: var(--accent); }
+  .log-time { color: #555; margin-right: 8px; font-size: 10px; }
+  .log-message { white-space: pre-wrap; }
+
+  /* Player area — 居中，竖屏 9:16 */
+  #player-container {
+    position: relative; background: #000; border-radius: var(--radius);
+    flex-shrink: 0;
+    width: 100%; max-width: 420px;
+    aspect-ratio: 9 / 16;
+    max-height: 75vh;
+    margin: 0 auto;
+  }
+  #player-container.landscape {
+    aspect-ratio: 16 / 9;
+    max-width: 800px;
+    max-height: 65vh;
+  }
+  #player { width: 100%; height: 100%; }
+  #touch-indicator {
+    position: absolute; width: 40px; height: 40px;
+    border: 2px solid var(--primary); border-radius: 50%;
+    pointer-events: none; opacity: 0; transition: opacity 0.1s;
+    transform: translate(-50%, -50%); z-index: 10;
+  }
+  #touch-indicator.active { opacity: 0.8; }
+  #stats-overlay {
+    position: absolute; top: 8px; left: 8px;
+    background: rgba(0,0,0,0.7); color: var(--success);
+    font-family: var(--mono); font-size: 10px; padding: 6px 10px;
+    border-radius: 4px; z-index: 5; line-height: 1.6;
+    display: none;
+  }
+  #stats-overlay.visible { display: block; }
+  .stats-row { display: flex; gap: 8px; }
+  .stats-row span:first-child { color: var(--text2); }
+  #touch-coords {
+    position: absolute; bottom: 4px; right: 8px;
+    background: rgba(0,0,0,0.6); color: #0f0;
+    font-family: var(--mono); font-size: 10px; padding: 2px 6px;
+    border-radius: 3px; z-index: 5; display: none;
+  }
+  #touch-coords.visible { display: block; }
+  #btn-rotate-view {
+    position: absolute; top: 6px; right: 6px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.3);
+    font-size: 14px; cursor: pointer; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; line-height: 1;
+  }
+  #btn-rotate-view:hover { background: rgba(255,255,255,0.2); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+  @media (max-width: 900px) {
+    #main { flex-direction: column; }
+    #sidebar { width: 100% !important; max-height: 260px; }
+    #sidebar.collapsed { width: 0 !important; padding: 0; }
+    #center-panel { flex: 1; min-height: 300px; }
+    #api-panel { width: 100% !important; max-height: 40vh; }
+    #api-panel.collapsed { width: 0 !important; }
+    #player-container { max-width: 300px; max-height: 50vh; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div id="topbar">
+  <h1>☁️ 云手机 H5 调试工具</h1>
+  <span id="state-badge" class="badge badge-disconnected">未连接</span>
+  <span style="font-size:11px;color:var(--text2)" id="version-display"></span>
+  <span class="spacer"></span>
+  <button id="btn-sdk-load">加载 SDK</button>
+  <button id="btn-start" disabled>启动</button>
+  <button id="btn-stop" disabled>停止</button>
+  <button id="btn-destroy" class="danger" disabled>销毁</button>
+  <span style="color:var(--border);margin:0 4px">|</span>
+  <button id="btn-touch-debug" style="font-size:11px">触控调试</button>
+  <button id="btn-stats-poll" style="font-size:11px">实时状态</button>
+  <span style="color:var(--border);margin:0 4px">|</span>
+  <button id="btn-toggle-sidebar" style="font-size:11px" title="折叠/展开侧边栏">◀</button>
+  <button id="btn-toggle-api" style="font-size:11px" title="折叠/展开接口面板">▶</button>
+</div>
+
+<div id="main">
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div class="section">
+      <h3>SDK 配置</h3>
+      <label>SDK 路径</label>
+      <input id="cfg-sdk-path" value="./libs/vephone-sdk.min.js" placeholder="SDK 脚本路径或 CDN URL">
+      <span class="hint">本地路径或 CDN 地址</span>
+    </div>
+
+    <details class="section" open>
+      <summary>初始化参数 (initConfig)</summary>
+      <label>userId</label>
+      <input id="cfg-user-id" value="debug-user-001" placeholder="唯一用户标识">
+      <label>accountId</label>
+      <input id="cfg-account-id" value="" placeholder="火山引擎账号 ID">
+      <label>domId</label>
+      <input id="cfg-dom-id" value="player" placeholder="渲染容器 DOM ID">
+      <label>
+        <input type="checkbox" id="cfg-is-debug" checked> isDebug
+      </label>
+      <label>
+        <input type="checkbox" id="cfg-sync-clipboard" checked> enableSyncClipboard
+      </label>
+      <label>
+        <input type="checkbox" id="cfg-local-keyboard"> enableLocalKeyboard
+      </label>
+      <label>
+        <input type="checkbox" id="cfg-mouse-scroll" checked> enableLocalMouseScroll
+      </label>
+    </details>
+
+    <details class="section" open>
+      <summary>启动参数 (startConfig)</summary>
+      <label>productId</label>
+      <input id="cfg-product-id" value="" placeholder="业务 ID">
+      <label>podId</label>
+      <input id="cfg-pod-id" value="" placeholder="实例 ID">
+      <label>AccessKeyID</label>
+      <input id="cfg-ak" value="" placeholder="临时 AK">
+      <label>SecretAccessKey</label>
+      <input id="cfg-sk" value="" placeholder="临时 SK">
+      <label>SessionToken</label>
+      <input id="cfg-session-token" value="" placeholder="STS Token">
+      <label>CurrentTime</label>
+      <input id="cfg-current-time" value="" placeholder="当前时间戳">
+      <label>ExpiredTime</label>
+      <input id="cfg-expired-time" value="" placeholder="过期时间戳">
+      <label>rotation</label>
+      <select id="cfg-rotation">
+        <option value="portrait">portrait (竖屏)</option>
+        <option value="landscape">landscape (横屏)</option>
+      </select>
+      <label>
+        <input type="checkbox" id="cfg-mute" checked> mute (静音启动)
+      </label>
+      <label>
+        <input type="checkbox" id="cfg-audio-autoplay"> audioAutoPlay
+      </label>
+    </details>
+
+    <details class="section" open>
+      <summary>📋 粘贴配置（一键填充）</summary>
+      <textarea id="paste-config" placeholder="在此粘贴 JSON 配置，自动识别并填充所有字段。支持 STS 接口返回的原始 JSON。&#10;&#10;例如：&#10;{&quot;productId&quot;:&quot;xxx&quot;,&quot;podId&quot;:&quot;xxx&quot;,&quot;token&quot;:{&quot;AccessKeyID&quot;:&quot;...&quot;}}"
+        style="width:100%;height:80px;margin-top:6px;font-size:10px;font-family:var(--mono);background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;resize:vertical;padding:6px"></textarea>
+      <button onclick="pasteConfig()" style="font-size:11px;padding:5px 10px;margin-top:4px;width:100%;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer">自动填充</button>
+      <span class="hint" style="margin-top:2px">支持嵌套 token 对象（STS 格式），自动解包 AccessKeyID / SecretAccessKey / SessionToken</span>
+    </details>
+
+    <details class="section">
+      <summary>预设管理</summary>
+      <div style="display:flex;gap:4px;margin-top:6px">
+        <input id="preset-name" placeholder="预设名称" style="flex:1;font-size:11px;padding:4px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px">
+        <button onclick="savePreset(document.getElementById('preset-name').value)" style="font-size:10px;padding:4px 8px;white-space:nowrap">保存</button>
+      </div>
+      <button onclick="exportPresets()" style="font-size:10px;padding:3px 8px;margin-top:4px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer">导出预设</button>
+      <button onclick="importPresetsPrompt()" style="font-size:10px;padding:3px 8px;margin-top:4px;margin-left:4px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer">导入预设</button>
+      <div id="preset-list" style="margin-top:4px">
+        <span style="font-size:10px;color:var(--text2)">暂无预设</span>
+      </div>
+    </details>
+
+    <details class="section">
+      <summary>自定义事件监听</summary>
+      <label>
+        <input type="checkbox" id="evt-message-received" checked> message-received
+      </label>
+      <label>
+        <input type="checkbox" id="evt-clipboard-message" checked> clipboard-message-received
+      </label>
+      <label>
+        <input type="checkbox" id="evt-connection-state" checked> connection-state-changed
+      </label>
+      <label>
+        <input type="checkbox" id="evt-error" checked> error
+      </label>
+      <label>
+        <input type="checkbox" id="evt-audio-state" checked> audio-state-changed
+      </label>
+      <label>
+        <input type="checkbox" id="evt-video-state" checked> video-state-changed
+      </label>
+      <label>
+        <input type="checkbox" id="evt-first-frame" checked> first-frame-rendered
+      </label>
+    </details>
+  </div>
+
+  <!-- Center: Player -->
+  <div id="center-panel">
+    <div id="player-container">
+      <div id="player"></div>
+      <div id="touch-indicator"></div>
+      <div id="stats-overlay">
+        <div class="stats-row"><span>FPS:</span><span id="stat-fps">--</span></div>
+        <div class="stats-row"><span>延迟:</span><span id="stat-delay">--</span></div>
+        <div class="stats-row"><span>丢包:</span><span id="stat-loss">--</span></div>
+        <div class="stats-row"><span>码率:</span><span id="stat-bitrate">--</span></div>
+        <div class="stats-row"><span>分辨率:</span><span id="stat-resolution">--</span></div>
+      </div>
+      <div id="touch-coords">x:0 y:0</div>
+      <button id="btn-rotate-view" title="切换横竖屏">↻</button>
+    </div>
+  </div>
+
+  <!-- Right API Panel -->
+  <div id="api-panel"></div>
+</div>
+
+<!-- Bottom Log -->
+<div id="log-panel">
+  <div id="log-header">
+    <h3>📋 日志</h3>
+    <label><input type="checkbox" id="log-info" checked> Info</label>
+    <label><input type="checkbox" id="log-event" checked> Event</label>
+    <label><input type="checkbox" id="log-success" checked> Success</label>
+    <label><input type="checkbox" id="log-error" checked> Error</label>
+    <button id="btn-clear-log">清空</button>
+    <button id="btn-export-log">导出日志</button>
+  </div>
+  <div id="log-output"></div>
+</div>
+
+<script>
+// ========== Global State ==========
+let sdk = null;
+let sdkInstance = null;
+let sdkLoaded = false;
+let sdkPath = '';
+let connectionState = 'DISCONNECTED';
+let logLevels = { info: true, event: true, success: true, error: true, warn: true };
+let externalVideoStream = null;
+let externalAudioStream = null;
+
+const requiredStartFields = [
+  ['cfg-product-id', 'productId'],
+  ['cfg-pod-id', 'podId'],
+  ['cfg-ak', 'AccessKeyID'],
+  ['cfg-sk', 'SecretAccessKey'],
+  ['cfg-session-token', 'SessionToken'],
+  ['cfg-current-time', 'CurrentTime'],
+  ['cfg-expired-time', 'ExpiredTime'],
+];
+
+const requiredInitFields = [
+  ['cfg-user-id', 'userId'],
+  ['cfg-account-id', 'accountId'],
+  ['cfg-dom-id', 'domId'],
+];
+
+// ========== Log System ==========
+function log(msg, level = 'info') {
+  if (!logLevels[level]) return;
+  const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  const el = document.getElementById('log-output');
+  const line = document.createElement('div');
+  line.className = `log-line ${level}`;
+  const timeEl = document.createElement('span');
+  timeEl.className = 'log-time';
+  timeEl.textContent = time;
+  const msgEl = document.createElement('span');
+  msgEl.className = 'log-message';
+  msgEl.textContent = String(msg);
+  line.append(timeEl, msgEl);
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setResult(resultId, value, level = 'success') {
+  const el = document.getElementById(resultId);
+  if (!el) return;
+  el.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  el.className = `result ${level}`;
+}
+
+function safeJsonParse(raw, label = 'JSON') {
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`${label} 解析失败: ${err.message}`);
+  }
+}
+
+function getTrimmedValue(id) {
+  return document.getElementById(id).value.trim();
+}
+
+function validateStartConfig() {
+  const missing = requiredStartFields
+    .filter(([id]) => !getTrimmedValue(id))
+    .map(([, label]) => label);
+  if (missing.length > 0) {
+    log(`启动参数缺失: ${missing.join(', ')}`, 'error');
+    return false;
+  }
+  return true;
+}
+
+function validateInitConfig() {
+  const missing = requiredInitFields
+    .filter(([id]) => !getTrimmedValue(id))
+    .map(([, label]) => label);
+  if (missing.length > 0) {
+    log(`初始化参数缺失: ${missing.join(', ')}。请补全后重新点击「加载 SDK」`, 'error');
+    return false;
+  }
+  return true;
+}
+
+function updateState(state) {
+  connectionState = state;
+  const badge = document.getElementById('state-badge');
+  badge.textContent = state;
+  badge.className = 'badge';
+  switch (state) {
+    case 'CONNECTED': badge.classList.add('badge-connected'); break;
+    case 'CONNECTING': badge.classList.add('badge-connecting'); break;
+    case 'DISCONNECTED': badge.classList.add('badge-disconnected'); break;
+    default: badge.classList.add('badge-error'); break;
+  }
+  document.getElementById('btn-start').disabled = (state === 'CONNECTED' || state === 'CONNECTING');
+  document.getElementById('btn-stop').disabled = (state !== 'CONNECTED');
+  document.getElementById('btn-destroy').disabled = (state === 'DISCONNECTED');
+}
+
+function resetRuntimeState() {
+  if (statsPolling) {
+    clearInterval(statsPolling);
+    statsPolling = null;
+  }
+  statsOverlay.classList.remove('visible');
+  const statsBtn = document.getElementById('btn-stats-poll');
+  statsBtn.classList.remove('active');
+  statsBtn.style.background = '';
+  stopExternalMediaTracks();
+}
+
+function stopExternalMediaTracks(kind = 'all') {
+  if ((kind === 'all' || kind === 'video') && externalVideoStream) {
+    externalVideoStream.getTracks().forEach(track => track.stop());
+    externalVideoStream = null;
+  }
+  if ((kind === 'all' || kind === 'audio') && externalAudioStream) {
+    externalAudioStream.getTracks().forEach(track => track.stop());
+    externalAudioStream = null;
+  }
+}
+
+async function getExternalMediaTrack(kind) {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('当前浏览器不支持 getUserMedia，外部采集需要在 localhost 或 HTTPS 下使用');
+  }
+  if (kind === 'video') {
+    stopExternalMediaTracks('video');
+    externalVideoStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 720 }, height: { ideal: 1280 }, facingMode: 'user' },
+      audio: false,
+    });
+    return externalVideoStream.getVideoTracks()[0];
+  }
+  stopExternalMediaTracks('audio');
+  externalAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  return externalAudioStream.getAudioTracks()[0];
+}
+
+// ========== SDK Loader ==========
+async function loadSDK() {
+  const path = document.getElementById('cfg-sdk-path').value.trim();
+  if (!path) {
+    log('请输入 SDK 路径', 'error');
+    return;
+  }
+  if (!validateInitConfig()) return;
+  sdkPath = path;
+
+  // Remove existing script
+  const old = document.querySelector('script[data-sdk]');
+  if (old) old.remove();
+
+  log(`正在加载 SDK: ${path}`, 'info');
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.setAttribute('data-sdk', 'true');
+    script.src = path;
+    script.onload = () => {
+      sdk = window.vePhoneSDK || window.VePhoneSDK;
+      if (sdk && sdk.default && typeof sdk.default === 'function') {
+        sdk = sdk.default;
+      }
+      if (!sdk || typeof sdk !== 'function') {
+        log('SDK 加载成功但未找到构造函数，检查 window.vePhoneSDK = ' + typeof window.vePhoneSDK + ', .default = ' + typeof window.vePhoneSDK?.default, 'error');
+        reject(new Error('SDK constructor not found'));
+        return;
+      }
+      sdkLoaded = true;
+      log('SDK 加载成功', 'success');
+      document.getElementById('version-display').textContent = '';
+      try {
+        initInstance();
+        document.getElementById('btn-start').disabled = false;
+        resolve();
+      } catch (err) {
+        log('SDK 实例化失败: ' + (err.message || err), 'error');
+        document.getElementById('btn-start').disabled = true;
+        reject(err);
+      }
+    };
+    script.onerror = () => {
+      log(`SDK 加载失败: ${path}`, 'error');
+      sdkLoaded = false;
+      sdk = null;
+      reject(new Error('Failed to load SDK'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+function initInstance() {
+  // Clean up previous instance
+  if (sdkInstance) {
+    try { sdkInstance.destroy(); } catch (e) { /* ignore */ }
+    sdkInstance = null;
+  }
+  resetRuntimeState();
+
+  const userId = document.getElementById('cfg-user-id').value;
+  const accountId = document.getElementById('cfg-account-id').value;
+  const domId = document.getElementById('cfg-dom-id').value;
+
+  const isPC = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  sdkInstance = new sdk({
+    userId: userId || 'debug-user-' + Date.now(),
+    accountId: accountId || '',
+    domId: domId || 'player',
+    isPC,
+    isDebug: document.getElementById('cfg-is-debug').checked,
+    enableLocalKeyboard: document.getElementById('cfg-local-keyboard').checked,
+    enableSyncClipboard: document.getElementById('cfg-sync-clipboard').checked,
+    enableLocalMouseScroll: document.getElementById('cfg-mouse-scroll').checked,
+  });
+  log(`设备类型: ${isPC ? 'PC' : 'Mobile'}`, 'info');
+
+  document.getElementById('version-display').textContent =
+    'v' + (sdkInstance.getVersion ? sdkInstance.getVersion() : '?');
+
+  log('SDK 实例已创建', 'success');
+
+  // Bind events
+  bindEvents();
+
+  // 事件名嗅探：拦截 on 方法，自动发现所有事件名
+  const knownEvents = new Set();
+  const origOn = sdkInstance.on.bind(sdkInstance);
+  sdkInstance.on = function(evtName, ...rest) {
+    if (!knownEvents.has(evtName)) {
+      knownEvents.add(evtName);
+      log(`[发现事件] ${evtName}`, 'event');
+    }
+    return origOn(evtName, ...rest);
+  };
+
+  // Expose for console debugging
+  window.__vePhone = sdkInstance;
+  log('实例已暴露到 window.__vePhone，可在控制台直接调试', 'info');
+  log(`SDK 方法: ${Object.keys(sdkInstance).filter(k => typeof sdkInstance[k] === 'function').join(', ')}`, 'info');
+}
+
+function bindEvents() {
+  if (!sdkInstance) return;
+
+  const events = [
+    ['message-received', 'evt-message-received'],
+    ['clipboard-message-received', 'evt-clipboard-message'],
+    ['connection-state-changed', 'evt-connection-state'],
+    ['error', 'evt-error'],
+    ['audio-state-changed', 'evt-audio-state'],
+    ['video-state-changed', 'evt-video-state'],
+    ['first-frame-rendered', 'evt-first-frame'],
+    ['file-push-progress', null],
+    ['file-push-complete', null],
+    ['file-push-error', null],
+    ['on-send-file-progress', null],
+    ['on-send-file-done', null],
+    ['on-send-file-cancel', null],
+    ['on-download-file-progress', null],
+    ['on-download-file-done', null],
+    ['on-download-file-message-error', null],
+    ['on-download-file-request-error', null],
+    ['on-download-file-cancel', null],
+    ['remote-stream-start-request', null],
+    ['remote-stream-stop-request', null],
+  ];
+
+  events.forEach(([evtName, checkboxId]) => {
+    sdkInstance.off?.(evtName);
+    sdkInstance.on(evtName, (...args) => {
+      // null = 无复选框，始终打印；有复选框时按勾选状态
+      const shouldLog = checkboxId === null || document.getElementById(checkboxId)?.checked;
+      if (shouldLog) {
+        const payload = args.map(a => {
+          try { return JSON.stringify(a, null, 0); } catch { return String(a); }
+        }).join(', ');
+        log(`[事件] ${evtName}: ${payload}`, 'event');
+      }
+      if (evtName === 'connection-state-changed') {
+        updateState(args[0]?.state || args[0] || 'UNKNOWN');
+      }
+      if (evtName === 'first-frame-rendered') {
+        log('首帧已渲染，正在检查操控权...', 'info');
+        setTimeout(async () => {
+          try {
+            const uid = document.getElementById('cfg-user-id').value;
+            const hasCtrl = await sdkInstance.hasControl(uid);
+            log(`操控权状态: ${JSON.stringify(hasCtrl)}`, hasCtrl?.hasControl || hasCtrl?.result === 0 ? 'success' : 'warn');
+            if (!hasCtrl?.hasControl && hasCtrl?.result !== 0) {
+              log('⚠️ 当前用户无操控权！请在「权限 & 回收」面板中调用 enableControl 开启', 'warn');
+            }
+          } catch (e) {
+            log(`检查操控权: hasControl 接口不可用 (${e.message})，SDK 应自动管理操控权`, 'info');
+          }
+        }, 500);
+      }
+      if (evtName === 'on-download-file-done') {
+        const url = args.find(a => typeof a === 'string' && /^https?:\/\//.test(a));
+        if (url) {
+          log(`拉取完成，打开下载链接: ${url}`, 'success');
+          window.open(url, '_blank');
+        }
+      }
+    });
+  });
+}
+
+// ========== SDK Method Helpers ==========
+async function callMethod(methodName, args, resultId) {
+  if (!sdkInstance) {
+    log('SDK 实例未初始化', 'error');
+    return;
+  }
+  if (typeof sdkInstance[methodName] !== 'function') {
+    log(`方法 ${methodName} 不存在`, 'error');
+    return;
+  }
+  try {
+    log(`调用: ${methodName}(${JSON.stringify(args)})`, 'info');
+    const result = await sdkInstance[methodName](...args);
+    if (resultId) {
+      setResult(resultId, result, 'success');
+    }
+    log(`${methodName} 返回: ${JSON.stringify(result)}`, 'success');
+    return result;
+  } catch (err) {
+    log(`${methodName} 错误: ${err.message || err}`, 'error');
+    if (resultId) {
+      setResult(resultId, `Error: ${err.message || err}`, 'error');
+    }
+    throw err;
+  }
+}
+
+// ========== Start / Stop ==========
+async function handleStart() {
+  if (!sdkInstance) {
+    log('SDK 实例不存在，请先点击「加载 SDK」', 'error');
+    return;
+  }
+  if (!validateStartConfig()) return;
+
+  const productId = getTrimmedValue('cfg-product-id');
+  const podId = getTrimmedValue('cfg-pod-id');
+  const token = {
+    AccessKeyID: getTrimmedValue('cfg-ak'),
+    SecretAccessKey: getTrimmedValue('cfg-sk'),
+    SessionToken: getTrimmedValue('cfg-session-token'),
+    CurrentTime: getTrimmedValue('cfg-current-time'),
+    ExpiredTime: getTrimmedValue('cfg-expired-time'),
+  };
+  const startConfig = {
+    productId, podId, token,
+    rotation: document.getElementById('cfg-rotation').value,
+    isScreenLock: true,
+    mute: document.getElementById('cfg-mute').checked,
+    audioAutoPlay: document.getElementById('cfg-audio-autoplay').checked,
+  };
+  try {
+    updateState('CONNECTING');
+    const res = await sdkInstance.start(startConfig);
+    log(`启动成功: ${JSON.stringify(res)}`, 'success');
+    updateState('CONNECTED');
+  } catch (err) {
+    log(`启动失败: ${err.message || err}`, 'error');
+    updateState('DISCONNECTED');
+  }
+}
+
+async function handleStop() {
+  if (!sdkInstance) {
+    log('SDK 实例不存在', 'error');
+    return;
+  }
+  try {
+    await sdkInstance.stop();
+    log('已停止', 'success');
+    updateState('DISCONNECTED');
+  } catch (err) {
+    log(`停止失败: ${err.message || err}`, 'error');
+  }
+}
+
+async function handleDestroy() {
+  if (!sdkInstance) {
+    log('SDK 实例不存在', 'error');
+    return;
+  }
+  try {
+    resetRuntimeState();
+    sdkInstance.destroy();
+    sdkInstance = null;
+    log('已销毁', 'success');
+    updateState('DISCONNECTED');
+    document.getElementById('btn-start').disabled = true;
+  } catch (err) {
+    log(`销毁失败: ${err.message || err}`, 'error');
+  }
+}
+
+// ========== Tab & API Card System ==========
+const apiCategories = [
+  {
+    id: 'lifecycle',
+    label: '生命周期',
+    methods: [
+      { name: 'start', desc: '启动云手机服务', params: [
+        { label: 'startConfig JSON', id: 'm-start-config', type: 'textarea', default: '{"productId":"","podId":"","token":{"AccessKeyID":"","SecretAccessKey":"","SessionToken":"","CurrentTime":"","ExpiredTime":""},"rotation":"portrait","mute":true}' }
+      ], call: (args) => sdkInstance.start(safeJsonParse(args[0], 'startConfig')) },
+      { name: 'stop', desc: '停止拉流，不回收本地资源', call: () => sdkInstance.stop() },
+      { name: 'destroy', desc: '销毁实例，释放全部资源', call: () => {
+        resetRuntimeState();
+        sdkInstance.destroy();
+        sdkInstance = null;
+        updateState('DISCONNECTED');
+        document.getElementById('btn-start').disabled = true;
+        log('已销毁', 'success');
+      }},
+      { name: 'pause', desc: '暂停拉取音视频流', call: () => sdkInstance.pause() },
+      { name: 'resume', desc: '恢复已暂停的音视频流', call: () => sdkInstance.resume() },
+      { name: 'playByInteraction', desc: '引导用户交互以恢复播放', call: () => sdkInstance.playByInteraction() },
+      { name: 'updateExpireTime', desc: '更新拉流有效期', params: [
+        { label: 'expireTime (秒)', id: 'm-expire-time', type: 'number', default: '3600' }
+      ], call: (args) => sdkInstance.updateExpireTime(Number(args[0])) },
+      { name: 'getConnectionState', desc: '获取连接状态', call: () => sdkInstance.getConnectionState() },
+      { name: 'getVersion', desc: '获取 SDK 版本号', call: () => sdkInstance.getVersion() },
+    ]
+  },
+  {
+    id: 'audio',
+    label: '音频控制',
+    methods: [
+      { name: 'setAudioMute', desc: '关闭/开启播放声音', params: [
+        { label: 'muted (boolean)', id: 'm-audio-mute', type: 'select', options: ['true','false'], default: 'true' }
+      ], call: (args) => sdkInstance.setAudioMute(args[0] === 'true') },
+      { name: 'muteAudio', desc: '媒体流静音开关', params: [
+        { label: 'muted (boolean)', id: 'm-mute-audio', type: 'select', options: ['true','false'], default: 'true' }
+      ], call: (args) => sdkInstance.muteAudio(args[0] === 'true') },
+      { name: 'isAudioMuted', desc: '检查媒体流静音状态', call: () => sdkInstance.isAudioMuted() },
+      { name: 'isVideoMuted', desc: '检查视频流是否停止播放', call: () => sdkInstance.isVideoMuted() },
+      { name: 'getLocalAudioPlaybackVolume', desc: '获取本地播放音量', call: () => sdkInstance.getLocalAudioPlaybackVolume() },
+      { name: 'setLocalAudioPlaybackVolume', desc: '设置本地播放音量', params: [
+        { label: 'volume (0-100)', id: 'm-audio-vol', type: 'number', default: '50' }
+      ], call: (args) => sdkInstance.setLocalAudioPlaybackVolume(Number(args[0])) },
+      { name: 'volumeUp', desc: '调高音量', call: () => sdkInstance.volumeUp() },
+      { name: 'volumeDown', desc: '调低音量', call: () => sdkInstance.volumeDown() },
+      { name: 'getAudioPlaybackDeviceList', desc: '获取音频播放设备列表', call: () => sdkInstance.getAudioPlaybackDeviceList() },
+      { name: 'getAudioPlaybackDevice', desc: '获取当前音频播放设备', call: () => sdkInstance.getAudioPlaybackDevice() },
+      { name: 'setAudioPlaybackDevice', desc: '设置音频播放设备', params: [
+        { label: 'deviceId', id: 'm-audio-device', type: 'text', default: '' }
+      ], call: (args) => sdkInstance.setAudioPlaybackDevice(args[0]) },
+      { name: 'getAudioCaptureDeviceList', desc: '获取音频采集设备列表', call: () => sdkInstance.getAudioCaptureDeviceList() },
+      { name: 'getAudioCaptureDevice', desc: '获取当前音频采集设备', call: () => sdkInstance.getAudioCaptureDevice() },
+      { name: 'startSendAudioStream', desc: '开始采集并发送麦克风音频', call: () => sdkInstance.startSendAudioStream() },
+      { name: 'stopSendAudioStream', desc: '停止发送音频数据', call: () => sdkInstance.stopSendAudioStream() },
+      { name: 'setAudioSourceType', desc: '设置音频采集模式', params: [
+        { label: 'sourceType', id: 'm-audio-src-type', type: 'text', default: '0' }
+      ], call: (args) => sdkInstance.setAudioSourceType(Number(args[0])) },
+    ]
+  },
+  {
+    id: 'video',
+    label: '视频控制',
+    methods: [
+      { name: 'setVideoStreamProfileId', desc: '清晰度切换', params: [
+        { label: 'profileId', id: 'm-profile-id', type: 'text', default: '' }
+      ], call: (args) => sdkInstance.setVideoStreamProfileId(args[0]) },
+      { name: 'setVideoEncoderConfig', desc: '配置视频编码质量策略', params: [
+        { label: 'config JSON', id: 'm-video-encoder-config', type: 'textarea', default: '{}' }
+      ], call: (args) => sdkInstance.setVideoEncoderConfig(safeJsonParse(args[0], 'config')) },
+      { name: 'getVideoStatus', desc: '获取当前视频源状态', call: () => sdkInstance.getVideoStatus() },
+      { name: 'stopVideoPlay', desc: '停止视频文件播放', call: () => sdkInstance.stopVideoPlay() },
+      { name: 'startVideoPlay', desc: '开启视频文件播放', params: [
+        { label: 'filePath / config JSON', id: 'm-video-play', type: 'textarea', default: '{}' }
+      ], call: (args) => sdkInstance.startVideoPlay(safeJsonParse(args[0], 'filePath / config')) },
+      { name: 'setVideoSourceType', desc: '设置视频采集模式（相机/外部）', params: [
+        { label: 'sourceType', id: 'm-video-src-type', type: 'text', default: '0' }
+      ], call: (args) => sdkInstance.setVideoSourceType(Number(args[0])) },
+      { name: 'updateVideoRenderMode', desc: '设置视频渲染模式', params: [
+        { label: 'renderMode', id: 'm-render-mode', type: 'text', default: '0' }
+      ], call: (args) => sdkInstance.updateVideoRenderMode(Number(args[0])) },
+      { name: 'switchCamera', desc: '切换摄像头', call: () => sdkInstance.switchCamera() },
+      { name: 'startVideoStream', desc: '采集并发送摄像头视频', call: () => sdkInstance.startVideoStream() },
+      { name: 'stopVideoStream', desc: '停止发送视频数据', call: () => sdkInstance.stopVideoStream() },
+      { name: 'setLocalVideoView', desc: '设置本地视频画面布局', params: [
+        { label: 'config JSON', id: 'm-local-video-view', type: 'textarea', default: '{}' }
+      ], call: (args) => sdkInstance.setLocalVideoView(safeJsonParse(args[0], 'config')) },
+      { name: 'setLocalVideoMirrorMode', desc: '前置摄像头时是否镜像本地画面', params: [
+        { label: 'enabled', id: 'm-mirror-mode', type: 'select', options: ['true','false'], default: 'true' }
+      ], call: (args) => sdkInstance.setLocalVideoMirrorMode(args[0] === 'true') },
+      { name: 'getLocalVideoMirrorMode', desc: '获取镜像模式状态', call: () => sdkInstance.getLocalVideoMirrorMode() },
+      { name: 'getVideoCaptureDevice', desc: '获取视频采集设备信息', call: () => sdkInstance.getVideoCaptureDevice() },
+      { name: 'getVideoPlaybackDeviceList', desc: '获取视频播放设备列表', call: () => sdkInstance.getVideoPlaybackDeviceList() },
+    ]
+  },
+  {
+    id: 'control',
+    label: '操控输入',
+    methods: [
+      { name: 'sendTouchMessage', desc: '发送触控事件', params: [
+        { label: 'touchData JSON', id: 'm-touch', type: 'textarea', default: '{"action":0,"x":0,"y":0,"pointerId":0}' }
+      ], call: (args) => sdkInstance.sendTouchMessage(safeJsonParse(args[0], 'touchData')) },
+      { name: 'sendKeycodeMessage', desc: '发送按键事件', params: [
+        { label: 'keyData JSON', id: 'm-keycode', type: 'textarea', default: '{"action":0,"keyCode":0}' }
+      ], call: (args) => sdkInstance.sendKeycodeMessage(safeJsonParse(args[0], 'keyData')) },
+      { name: 'sendMouseMessage', desc: '发送鼠标事件', params: [
+        { label: 'mouseData JSON', id: 'm-mouse', type: 'textarea', default: '{"action":0,"x":0,"y":0}' }
+      ], call: (args) => sdkInstance.sendMouseMessage(safeJsonParse(args[0], 'mouseData')) },
+      { name: 'sendInputText', desc: '输入自定义文本', params: [
+        { label: 'text', id: 'm-input-text', type: 'text', default: '' }
+      ], call: (args) => sdkInstance.sendInputText(args[0]) },
+      { name: 'coverCurrentEditText', desc: '清除输入框文本', call: () => sdkInstance.coverCurrentEditText() },
+      { name: 'sendShakeEventToGame', desc: '触发摇一摇事件', call: () => sdkInstance.sendShakeEventToGame() },
+      { name: 'rotateScreen', desc: '旋转屏幕', params: [
+        { label: 'orientation', id: 'm-rotate-screen', type: 'select', options: ['portrait','landscape','auto'], default: 'portrait' }
+      ], call: (args) => sdkInstance.rotateScreen(args[0]) },
+      { name: 'rotateCoordinate', desc: '配合 CSS transform 旋转坐标', params: [
+        { label: 'angle (度)', id: 'm-rotate-coord', type: 'number', default: '0' }
+      ], call: (args) => sdkInstance.rotateCoordinate(Number(args[0])) },
+      { name: 'enableFullScreen', desc: '设置全面屏开关', params: [
+        { label: 'enabled', id: 'm-fullscreen', type: 'select', options: ['true','false'], default: 'true' }
+      ], call: (args) => sdkInstance.enableFullScreen(args[0] === 'true') },
+      { name: 'getKeyboardStyle', desc: '查询输入法类型', call: () => sdkInstance.getKeyboardStyle() },
+      { name: 'setKeyboardStyle', desc: '切换输入法类型', params: [
+        { label: 'style', id: 'm-keyboard-style', type: 'text', default: '0' }
+      ], call: (args) => sdkInstance.setKeyboardStyle(Number(args[0])) },
+      { name: 'getFocusedWindowApp', desc: '获取当前焦点的窗口应用名', call: () => sdkInstance.getFocusedWindowApp() },
+    ]
+  },
+  {
+    id: 'clipboard-file',
+    label: '剪贴板 & 文件',
+    methods: [
+      { name: 'sendClipBoardMessage', desc: '发送剪贴板消息到云端', params: [
+        { label: 'text', id: 'm-clipboard-text', type: 'text', default: '' }
+      ], call: (args) => sdkInstance.sendClipBoardMessage(args[0]) },
+      { name: 'sendMessage', desc: '发送自定义消息到云机', params: [
+        { label: 'message JSON', id: 'm-send-msg', type: 'textarea', default: '{"command":0,"data":{}}' }
+      ], call: (args) => sdkInstance.sendMessage(safeJsonParse(args[0], 'message')) },
+      { name: 'startPushFile', desc: '选择本地文件推送到云机', params: [
+        { label: '目标路径', id: 'm-push-remote-path', type: 'text', default: '/sdcard/Download/' }
+      ], call: (args) => {
+        return new Promise((resolve, reject) => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.onchange = async () => {
+            const file = input.files[0];
+            if (!file) { reject(new Error('未选择文件')); return; }
+            const remotePath = args[0] || '/sdcard/Download/';
+            log(`推送文件: ${file.name} (${(file.size/1024).toFixed(1)}KB) → ${remotePath}`, 'info');
+            try {
+              const res = await sdkInstance.startPushFile(file, { folder: remotePath });
+              log(`返回值: ${JSON.stringify(res)} (${typeof res})`, 'info');
+              resolve(res);
+            } catch (e) {
+              log(`推送失败: ${e.message}`, 'error');
+              reject(e);
+            }
+          };
+          input.click();
+        });
+      }},
+      { name: 'stopPushFile', desc: '停止推送文件', call: () => {
+        try { sdkInstance.stopPushFile(); log('已停止推送', 'info'); } catch(e) { log(`停止失败: ${e.message}`, 'error'); }
+      }},
+      { name: 'startPullFile', desc: '从云机拉取文件到本地', params: [
+        { label: '云端目录 folder', id: 'm-pull-folder', type: 'text', default: '/sdcard/Download' },
+        { label: '文件名 name', id: 'm-pull-name', type: 'text', default: '' },
+        { label: '仅返回下载链接 returnUrl', id: 'm-pull-return-url', type: 'select', options: ['false','true'], default: 'false' }
+      ], call: async (args) => {
+        const folder = (args[0] || '').trim();
+        const name = (args[1] || '').trim();
+        const returnUrl = args[2] === 'true';
+        if (!name) {
+          throw new Error('请填写要拉取的文件名，例如 test.png');
+        }
+        log(`请求拉取云端文件: ${folder ? folder + '/' : ''}${name}`, 'info');
+        const res = sdkInstance.startPullFile({ folder, name, returnUrl });
+        return {
+          started: res !== false,
+          folder,
+          name,
+          returnUrl,
+          note: returnUrl ? '完成后会在 on-download-file-done 事件中返回下载链接' : '完成后浏览器会触发本地下载',
+        };
+      }},
+      { name: 'stopPullFile', desc: '停止拉取文件', call: () => {
+        try { sdkInstance.stopPullFile(); log('已停止拉取', 'info'); } catch(e) { log(`停止失败: ${e.message}`, 'error'); }
+      }},
+    ]
+  },
+  {
+    id: 'permission',
+    label: '权限 & 回收',
+    methods: [
+      { name: 'getAllControls', desc: '查询全部用户操控权详情', call: () => sdkInstance.getAllControls() },
+      { name: 'hasControl', desc: '查询指定用户是否有操控权', params: [
+        { label: 'userId', id: 'm-control-user-id', type: 'text', default: '' }
+      ], call: (args) => sdkInstance.hasControl(args[0]) },
+      { name: 'enableControl', desc: '设置用户操控权', params: [
+        { label: 'userId', id: 'm-enable-control-user', type: 'text', default: '' },
+        { label: 'enabled', id: 'm-enable-control-val', type: 'select', options: ['true','false'], default: 'true' }
+      ], call: (args) => sdkInstance.enableControl(args[0], args[1] === 'true') },
+      { name: 'getAutoRecycleTime', desc: '获取无操作回收时间', call: () => sdkInstance.getAutoRecycleTime() },
+      { name: 'setAutoRecycleTime', desc: '设置无操作回收时间', params: [
+        { label: 'seconds', id: 'm-auto-recycle', type: 'number', default: '300' }
+      ], call: (args) => sdkInstance.setAutoRecycleTime(Number(args[0])) },
+      { name: 'getIdleTime', desc: '获取切后台保活时间', call: () => sdkInstance.getIdleTime() },
+      { name: 'setIdleTime', desc: '设置切后台保活时间', params: [
+        { label: 'seconds', id: 'm-idle-time', type: 'number', default: '300' }
+      ], call: (args) => sdkInstance.setIdleTime(Number(args[0])) },
+      { name: 'setRemoteAppForeground', desc: '云端应用切换到前台', params: [
+        { label: 'packageName', id: 'm-app-fg', type: 'text', default: '' }
+      ], call: (args) => sdkInstance.setRemoteAppForeground(args[0]) },
+      { name: 'getRemoteBackgroundAppList', desc: '获取已切后台的云端应用列表', call: () => sdkInstance.getRemoteBackgroundAppList() },
+    ]
+  },
+  {
+    id: 'injection',
+    label: '注入 & 外部采集',
+    methods: [
+      { name: 'getVideoInjectionState', desc: '获取视频注入开关状态', call: () => sdkInstance.getVideoInjectionState() },
+      { name: 'setVideoInjectionState', desc: '设置视频注入开关', params: [
+        { label: 'enabled', id: 'm-video-inj', type: 'select', options: ['true','false'], default: 'true' }
+      ], call: (args) => sdkInstance.setVideoInjectionState(args[0] === 'true') },
+      { name: 'getAudioInjectionState', desc: '获取音频注入开关状态', call: () => sdkInstance.getAudioInjectionState() },
+      { name: 'setAudioInjectionState', desc: '设置音频注入开关', params: [
+        { label: 'enabled', id: 'm-audio-inj', type: 'select', options: ['true','false'], default: 'true' }
+      ], call: (args) => sdkInstance.setAudioInjectionState(args[0] === 'true') },
+      { name: 'startExternalVideoTrack', desc: '采集本地摄像头并注入到云端', call: async () => {
+        const track = await getExternalMediaTrack('video');
+        log(`已获取摄像头轨道: ${track.label || track.id}`, 'info');
+        try { await sdkInstance.setVideoSourceType?.(0); } catch (e) { /* ignore */ }
+        await sdkInstance.startExternalVideoTrack(null, track);
+        return { success: true, trackId: track.id, label: track.label };
+      }},
+      { name: 'stopExternalVideoTrack', desc: '停止视频外部采集', call: async () => {
+        try { await sdkInstance.stopExternalVideoTrack?.(); } finally { stopExternalMediaTracks('video'); }
+        return { success: true };
+      }},
+      { name: 'startExternalAudioTrack', desc: '采集本地麦克风并注入到云端', call: async () => {
+        const track = await getExternalMediaTrack('audio');
+        log(`已获取麦克风轨道: ${track.label || track.id}`, 'info');
+        try { await sdkInstance.setAudioSourceType?.(0); } catch (e) { /* ignore */ }
+        await sdkInstance.startExternalAudioTrack(null, track);
+        return { success: true, trackId: track.id, label: track.label };
+      }},
+      { name: 'stopExternalAudioTrack', desc: '停止音频外部采集', call: async () => {
+        try { await sdkInstance.stopExternalAudioTrack(); } finally { stopExternalMediaTracks('audio'); }
+        return { success: true };
+      }},
+    ]
+  },
+  {
+    id: 'screenshot-record',
+    label: '截图 & 录屏',
+    methods: [
+      { name: 'screenShot', desc: '云手机画面截图（上传到对象存储）', params: [
+        { label: 'saveToLocal (boolean)', id: 'm-screenshot-local', type: 'select', options: ['true','false'], default: 'false' }
+      ], call: async (args) => {
+        const res = await sdkInstance.screenShot(args[0] === 'true');
+        if (res.downloadUrl) {
+          window.open(res.downloadUrl, '_blank');
+          log(`截图成功，URL: ${res.downloadUrl}`, 'success');
+        }
+        return res;
+      }},
+      { name: 'screenShotLocal', desc: '本地截图', call: () => sdkInstance.screenShotLocal() },
+      { name: 'startRecording', desc: '开始录屏', params: [
+        { label: 'config JSON', id: 'm-recording-start', type: 'textarea', default: '{}' }
+      ], call: (args) => sdkInstance.startRecording(safeJsonParse(args[0], 'config')) },
+      { name: 'stopRecording', desc: '停止录屏', call: () => sdkInstance.stopRecording() },
+    ]
+  },
+  {
+    id: 'location',
+    label: '定位 & 其他',
+    methods: [
+      { name: 'getLocationServiceMode', desc: '获取位置服务模式', call: () => sdkInstance.getLocationServiceMode() },
+      { name: 'setLocationServiceMode', desc: '设置位置服务模式', params: [
+        { label: 'mode', id: 'm-loc-mode', type: 'text', default: '0' }
+      ], call: (args) => sdkInstance.setLocationServiceMode(Number(args[0])) },
+      { name: 'setRemoteLocationMock', desc: '设置远端经纬度', params: [
+        { label: 'longitude', id: 'm-lng', type: 'number', default: '116.397' },
+        { label: 'latitude', id: 'm-lat', type: 'number', default: '39.908' }
+      ], call: (args) => sdkInstance.setRemoteLocationMock(Number(args[0]), Number(args[1])) },
+      { name: 'getStats', desc: '获取实时运行状态（延时、丢包率、帧率）', call: () => sdkInstance.getStats() },
+      { name: 'isSupported', desc: '检测浏览器兼容性(静态方法)', call: () => sdk.isRtcSupported ? sdk.isRtcSupported() : sdk.isSupported() },
+    ]
+  },
+];
+
+// Build vertical accordion API panel
+function buildUI() {
+  const panelEl = document.getElementById('api-panel');
+
+  apiCategories.forEach((cat, i) => {
+    const category = document.createElement('div');
+    category.className = 'api-category' + (i === 0 ? ' open' : '');
+
+    const header = document.createElement('div');
+    header.className = 'api-category-header';
+    header.innerHTML = `<span>${cat.label}</span><span class="arrow">▶</span>`;
+    header.onclick = () => {
+      category.classList.toggle('open');
+    };
+    category.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'api-category-body';
+
+    cat.methods.forEach(m => {
+      const card = document.createElement('div');
+      card.className = 'api-card';
+
+      const title = document.createElement('h4');
+      title.textContent = m.name + (m.params && m.params.length > 0 ? `(${m.params.map(p => p.label.split(' ')[0]).join(', ')})` : '()');
+      card.appendChild(title);
+
+      const desc = document.createElement('div');
+      desc.className = 'desc';
+      desc.textContent = m.desc || '';
+      card.appendChild(desc);
+
+      if (m.params && m.params.length > 0) {
+        const paramsDiv = document.createElement('div');
+        paramsDiv.className = 'params';
+        m.params.forEach(p => {
+          const label = document.createElement('label');
+          label.textContent = p.label;
+          paramsDiv.appendChild(label);
+
+          if (p.type === 'select') {
+            const sel = document.createElement('select');
+            sel.id = p.id;
+            (p.options || []).forEach(o => {
+              const opt = document.createElement('option');
+              opt.value = o;
+              opt.textContent = o;
+              if (o === p.default) opt.selected = true;
+              sel.appendChild(opt);
+            });
+            paramsDiv.appendChild(sel);
+          } else if (p.type === 'textarea') {
+            const ta = document.createElement('textarea');
+            ta.id = p.id;
+            ta.value = p.default || '';
+            paramsDiv.appendChild(ta);
+          } else {
+            const input = document.createElement('input');
+            input.id = p.id;
+            input.type = p.type || 'text';
+            input.value = p.default || '';
+            paramsDiv.appendChild(input);
+          }
+        });
+        card.appendChild(paramsDiv);
+      }
+
+      const resultId = `result-${cat.id}-${m.name}`;
+      const result = document.createElement('div');
+      result.className = 'result';
+      result.id = resultId;
+      result.textContent = '// 结果';
+      card.appendChild(result);
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'btn-row';
+      const execBtn = document.createElement('button');
+      execBtn.textContent = '执行';
+      execBtn.onclick = async () => {
+        if (!sdkInstance) {
+          log('请先点击「加载 SDK」创建实例', 'error');
+          return;
+        }
+        const args = (m.params || []).map(p => {
+          const el = document.getElementById(p.id);
+          return el ? el.value : undefined;
+        });
+        try {
+          const res = await (m.call ? m.call(args) : sdkInstance[m.name](...args));
+          setResult(resultId, res, 'success');
+          if (!m.call) {
+            log(`${m.name} 返回: ${JSON.stringify(res)}`, 'success');
+          }
+        } catch (err) {
+          setResult(resultId, `Error: ${err.message || err}`, 'error');
+          log(`${m.name} 错误: ${err.message || err}`, 'error');
+        }
+      };
+      btnRow.appendChild(execBtn);
+      card.appendChild(btnRow);
+      body.appendChild(card);
+    });
+
+    category.appendChild(body);
+    panelEl.appendChild(category);
+  });
+}
+
+// ========== Event Bindings ==========
+document.getElementById('btn-sdk-load').addEventListener('click', () => {
+  loadSDK().catch(() => {}); // 错误已在 loadSDK 内部记录
+});
+document.getElementById('btn-start').addEventListener('click', handleStart);
+document.getElementById('btn-stop').addEventListener('click', handleStop);
+document.getElementById('btn-destroy').addEventListener('click', handleDestroy);
+document.getElementById('btn-touch-debug').addEventListener('click', function() {
+  const active = this.classList.toggle('active');
+  this.style.background = active ? 'var(--primary)' : '';
+  enableTouchDebug(active);
+});
+document.getElementById('btn-rotate-view').addEventListener('click', function() {
+  const container = document.getElementById('player-container');
+  container.classList.toggle('landscape');
+  const isLandscape = container.classList.contains('landscape');
+  this.textContent = isLandscape ? '↺' : '↻';
+  if (sdkInstance) {
+    try {
+      sdkInstance.rotateScreen(isLandscape ? 'landscape' : 'portrait');
+    } catch(e) { /* 方法可能不存在 */ }
+  }
+});
+document.getElementById('btn-toggle-sidebar').addEventListener('click', function() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('collapsed');
+  this.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+});
+document.getElementById('btn-toggle-api').addEventListener('click', function() {
+  const panel = document.getElementById('api-panel');
+  panel.classList.toggle('collapsed');
+  this.textContent = panel.classList.contains('collapsed') ? '◀' : '▶';
+  log(panel.classList.contains('collapsed') ? '接口面板已折叠' : '接口面板已展开', 'info');
+});
+document.getElementById('btn-stats-poll').addEventListener('click', function() {
+  const active = this.classList.toggle('active');
+  this.style.background = active ? 'var(--primary)' : '';
+  toggleStatsPolling(active);
+});
+document.getElementById('btn-clear-log').addEventListener('click', () => {
+  document.getElementById('log-output').innerHTML = '';
+});
+document.getElementById('btn-export-log').addEventListener('click', () => {
+  const text = document.getElementById('log-output').innerText;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `vephone-debug-${new Date().toISOString()}.log`;
+  a.click();
+});
+
+// Log level filters
+['info', 'event', 'success', 'error'].forEach(level => {
+  document.getElementById(`log-${level}`).addEventListener('change', (e) => {
+    logLevels[level] = e.target.checked;
+  });
+});
+
+// ========== Touch Simulation on Player ==========
+let touchEnabled = false;
+let statsPolling = null;
+
+const playerContainer = document.getElementById('player-container');
+const touchIndicator = document.getElementById('touch-indicator');
+const touchCoords = document.getElementById('touch-coords');
+const statsOverlay = document.getElementById('stats-overlay');
+
+function getRelativeCoords(e) {
+  const rect = playerContainer.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: ((clientX - rect.left) / rect.width * 100).toFixed(1),
+    y: ((clientY - rect.top) / rect.height * 100).toFixed(1),
+    px: Math.round(clientX - rect.left),
+    py: Math.round(clientY - rect.top),
+  };
+}
+
+function enableTouchDebug(enabled) {
+  touchEnabled = enabled;
+  if (enabled) {
+    touchCoords.classList.add('visible');
+    playerContainer.style.cursor = 'crosshair';
+    log('触控调试已开启，在播放器上点击/滑动可查看坐标并发送触控事件', 'info');
+  } else {
+    touchCoords.classList.remove('visible');
+    playerContainer.style.cursor = '';
+  }
+}
+
+playerContainer.addEventListener('mousemove', (e) => {
+  if (!touchEnabled) return;
+  const c = getRelativeCoords(e);
+  touchCoords.textContent = `x:${c.px} y:${c.py} | ${c.x}% ${c.y}%`;
+});
+
+playerContainer.addEventListener('mousedown', (e) => {
+  if (!touchEnabled || !sdkInstance) return;
+  const c = getRelativeCoords(e);
+  touchIndicator.style.left = c.px + 'px';
+  touchIndicator.style.top = c.py + 'px';
+  touchIndicator.classList.add('active');
+  try {
+    sdkInstance.sendTouchMessage({
+      action: 0, // ACTION_DOWN
+      x: Number(c.x), y: Number(c.y),
+      pointerId: 0,
+    });
+    log(`触控按下: ${c.px}px,${c.py}py (${c.x}%,${c.y}%)`, 'info');
+  } catch (err) {
+    log(`触控发送失败: ${err.message}`, 'error');
+  }
+});
+
+playerContainer.addEventListener('mouseup', (e) => {
+  if (!touchEnabled || !sdkInstance) return;
+  const c = getRelativeCoords(e);
+  touchIndicator.classList.remove('active');
+  try {
+    sdkInstance.sendTouchMessage({
+      action: 1, // ACTION_UP
+      x: Number(c.x), y: Number(c.y),
+      pointerId: 0,
+    });
+  } catch (err) { /* ignore */ }
+});
+
+playerContainer.addEventListener('mouseleave', () => {
+  touchIndicator.classList.remove('active');
+});
+
+// ========== Stats Auto-Polling ==========
+async function pollStats() {
+  if (!sdkInstance) {
+    toggleStatsPolling(false);
+    return;
+  }
+  try {
+    const stats = await sdkInstance.getStats();
+    if (stats) {
+      document.getElementById('stat-fps').textContent = stats.fps ?? stats.videoFps ?? '--';
+      document.getElementById('stat-delay').textContent =
+        stats.rtt ? `${stats.rtt}ms` : (stats.delay ? `${stats.delay}ms` : '--');
+      document.getElementById('stat-loss').textContent =
+        stats.packetLoss != null ? `${stats.packetLoss}%` : (stats.lossRate != null ? `${stats.lossRate}%` : '--');
+      document.getElementById('stat-bitrate').textContent =
+        stats.bitrate ? `${(stats.bitrate / 1000).toFixed(0)}kbps` : (stats.videoBitrate ? `${(stats.videoBitrate / 1000).toFixed(0)}kbps` : '--');
+      document.getElementById('stat-resolution').textContent =
+        stats.resolution ? `${stats.resolution.width}x${stats.resolution.height}` :
+        (stats.width && stats.height ? `${stats.width}x${stats.height}` : '--');
+    }
+  } catch (err) { /* ignore polling errors */ }
+}
+
+function toggleStatsPolling(enabled) {
+  if (enabled) {
+    if (statsPolling) clearInterval(statsPolling);
+    statsOverlay.classList.add('visible');
+    pollStats();
+    statsPolling = setInterval(pollStats, 2000);
+    log('实时状态监控已开启，每 2s 刷新', 'info');
+  } else {
+    statsOverlay.classList.remove('visible');
+    if (statsPolling) { clearInterval(statsPolling); statsPolling = null; }
+  }
+}
+
+// ========== 粘贴配置 ==========
+function pasteConfig() {
+  let raw = document.getElementById('paste-config').value.trim();
+  if (!raw) { log('请先粘贴 JSON 配置', 'error'); return; }
+
+  // 尝试修复 JS 风格对象（无引号 key、单引号、尾逗号）
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch (e1) {
+    try {
+      // 去掉注释
+      raw = raw.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      // 单引号 → 双引号
+      raw = raw.replace(/'/g, '"');
+      // key 加引号: 匹配 { , 后面的无引号 key
+      raw = raw.replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":');
+      // 去掉尾逗号
+      raw = raw.replace(/,(\s*[}\]])/g, '$1');
+      // 去掉变量引用（token: token → token: "TOKEN_PLACEHOLDER"）
+      raw = raw.replace(/:\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\s*([,}])/g, (_m, v, tail) => {
+        const lower = v.toLowerCase();
+        if (['true','false','null','undefined'].includes(lower)) {
+          return ': ' + (lower === 'undefined' ? 'null' : lower) + tail;
+        }
+        return ': "' + v + '_PLACEHOLDER"' + tail;
+      });
+      data = JSON.parse(raw);
+    } catch (e2) {
+      log('JSON 解析失败，请检查格式。提示：token 等字段需要替换为实际字符串值', 'error');
+      return;
+    }
+  }
+
+  // 检测是否还有 PLACEHOLDER
+  const placeholderWarnings = [];
+  JSON.stringify(data, (k, v) => {
+    if (typeof v === 'string' && v.endsWith('_PLACEHOLDER')) {
+      placeholderWarnings.push(k + '=' + v);
+    }
+    return v;
+  });
+
+  // 平铺嵌套 token 对象
+  if (data.token && typeof data.token === 'object') {
+    Object.entries(data.token).forEach(([k, v]) => { data[k] = v; });
+  }
+  if (data.StartConfig && typeof data.StartConfig === 'object') {
+    Object.entries(data.StartConfig).forEach(([k, v]) => { if (data[k] == null) data[k] = v; });
+  }
+  if (data.InitConfig && typeof data.InitConfig === 'object') {
+    Object.entries(data.InitConfig).forEach(([k, v]) => { if (data[k] == null) data[k] = v; });
+  }
+
+  // 字段名 → 输入框 ID 映射
+  const fieldMap = {
+    productId:        'cfg-product-id',    ProductId:        'cfg-product-id',    product_id:       'cfg-product-id',
+    podId:            'cfg-pod-id',        PodId:            'cfg-pod-id',        pod_id:           'cfg-pod-id',
+    accountId:        'cfg-account-id',    AccountId:        'cfg-account-id',    account_id:       'cfg-account-id',
+    userId:           'cfg-user-id',       UserId:           'cfg-user-id',       user_id:          'cfg-user-id',
+    rotation:         'cfg-rotation',      Rotation:         'cfg-rotation',
+    isScreenLock:     null,                openAutoRotate:   null,                roundId:          null,
+    AccessKeyID:      'cfg-ak',            accessKeyId:      'cfg-ak',            access_key_id:    'cfg-ak',        ak: 'cfg-ak',
+    SecretAccessKey:  'cfg-sk',            secretAccessKey:  'cfg-sk',            secret_access_key:'cfg-sk',        sk: 'cfg-sk',
+    SessionToken:     'cfg-session-token', sessionToken:     'cfg-session-token', session_token:    'cfg-session-token',
+    CurrentTime:      'cfg-current-time',  currentTime:      'cfg-current-time',  current_time:     'cfg-current-time',
+    ExpiredTime:      'cfg-expired-time',  expiredTime:      'cfg-expired-time',  expired_time:     'cfg-expired-time',
+    mute:             'cfg-mute',          Mute:             'cfg-mute',
+    audioAutoPlay:    'cfg-audio-autoplay',
+    enableSyncClipboard: 'cfg-sync-clipboard',
+    sdkPath:          'cfg-sdk-path',
+  };
+
+  let filled = 0;
+  let skipped = [];
+  Object.entries(data).forEach(([key, val]) => {
+    if (val == null) return;
+    const targetId = fieldMap[key];
+    if (targetId === undefined) return;
+    if (targetId === null) { skipped.push(key); return; }  // 已知但无对应输入框
+
+    const el = document.getElementById(targetId);
+    if (!el) return;
+
+    if (el.type === 'checkbox') {
+      el.checked = !!val;
+    } else if (el.tagName === 'SELECT') {
+      if ([...el.options].some(o => o.value === String(val))) {
+        el.value = val;
+      }
+    } else {
+      el.value = typeof val === 'object' ? JSON.stringify(val) : String(val ?? '');
+    }
+    filled++;
+  });
+
+  if (filled > 0) {
+    log(`已自动填充 ${filled} 个字段`, 'success');
+  }
+  if (skipped.length > 0) {
+    log(`注意：以下字段无对应输入框，已跳过: ${skipped.join(', ')}（这些是 start() 时的参数，请在启动参数中手动补充）`, 'warn');
+  }
+  if (placeholderWarnings.length > 0) {
+    log(`警告：以下字段可能包含未替换的变量引用，请手动修正: ${placeholderWarnings.join(', ')}`, 'warn');
+  }
+  if (filled === 0) {
+    log('未识别到任何已知字段，请检查 JSON 格式', 'error');
+  }
+}
+
+// ========== Config Presets ==========
+function savePreset(name) {
+  name = name.trim();
+  if (!name) {
+    log('请先输入预设名称', 'error');
+    return;
+  }
+  const cfg = {
+    sdkPath: document.getElementById('cfg-sdk-path').value,
+    userId: document.getElementById('cfg-user-id').value,
+    accountId: document.getElementById('cfg-account-id').value,
+    productId: document.getElementById('cfg-product-id').value,
+    podId: document.getElementById('cfg-pod-id').value,
+    ak: document.getElementById('cfg-ak').value,
+    sk: document.getElementById('cfg-sk').value,
+    token: document.getElementById('cfg-session-token').value,
+    currentTime: document.getElementById('cfg-current-time').value,
+    expiredTime: document.getElementById('cfg-expired-time').value,
+    rotation: document.getElementById('cfg-rotation').value,
+    mute: document.getElementById('cfg-mute').checked,
+  };
+  const presets = JSON.parse(localStorage.getItem('vephone-presets') || '{}');
+  presets[name] = cfg;
+  localStorage.setItem('vephone-presets', JSON.stringify(presets));
+  log(`预设「${name}」已保存`, 'success');
+  refreshPresetList();
+}
+
+function loadPreset(name) {
+  const presets = JSON.parse(localStorage.getItem('vephone-presets') || '{}');
+  const cfg = presets[name];
+  if (!cfg) return;
+  Object.entries(cfg).forEach(([key, val]) => {
+    const el = document.getElementById(`cfg-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`);
+    if (!el) {
+      // Try alternate naming
+      const map = { ak: 'cfg-ak', sk: 'cfg-sk', token: 'cfg-session-token', currentTime: 'cfg-current-time', expiredTime: 'cfg-expired-time', mute: 'cfg-mute' };
+      const mappedEl = document.getElementById(map[key]);
+      if (mappedEl) {
+        if (mappedEl.type === 'checkbox') mappedEl.checked = val;
+        else mappedEl.value = val;
+      }
+      return;
+    }
+    if (el.type === 'checkbox') el.checked = val;
+    else el.value = val;
+  });
+  log(`预设「${name}」已加载`, 'success');
+}
+
+function deletePreset(name) {
+  const presets = JSON.parse(localStorage.getItem('vephone-presets') || '{}');
+  delete presets[name];
+  localStorage.setItem('vephone-presets', JSON.stringify(presets));
+  log(`预设「${name}」已删除`, 'info');
+  refreshPresetList();
+}
+
+function exportPresets() {
+  const presets = JSON.parse(localStorage.getItem('vephone-presets') || '{}');
+  const blob = new Blob([JSON.stringify(presets, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `vephone-presets-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  log('预设已导出', 'success');
+}
+
+function importPresetsPrompt() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (re) => {
+      try {
+        const imported = JSON.parse(re.target.result);
+        if (!imported || typeof imported !== 'object' || Array.isArray(imported)) {
+          throw new Error('预设文件需要是对象格式');
+        }
+        const existing = JSON.parse(localStorage.getItem('vephone-presets') || '{}');
+        const merged = { ...existing, ...imported };
+        localStorage.setItem('vephone-presets', JSON.stringify(merged));
+        log(`导入了 ${Object.keys(imported).length} 个预设`, 'success');
+        refreshPresetList();
+      } catch (err) {
+        log(`导入失败: ${err.message}`, 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function refreshPresetList() {
+  const container = document.getElementById('preset-list');
+  if (!container) return;
+  const presets = JSON.parse(localStorage.getItem('vephone-presets') || '{}');
+  const names = Object.keys(presets);
+  container.textContent = '';
+  if (names.length === 0) {
+    const empty = document.createElement('span');
+    empty.style.fontSize = '10px';
+    empty.style.color = 'var(--text2)';
+    empty.textContent = '暂无预设';
+    container.appendChild(empty);
+    return;
+  }
+  names.forEach(name => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.gap = '4px';
+    row.style.alignItems = 'center';
+    row.style.marginTop = '4px';
+
+    const label = document.createElement('span');
+    label.style.fontSize = '11px';
+    label.style.flex = '1';
+    label.style.overflow = 'hidden';
+    label.style.textOverflow = 'ellipsis';
+    label.style.whiteSpace = 'nowrap';
+    label.title = name;
+    label.textContent = name;
+
+    const loadBtn = document.createElement('button');
+    loadBtn.style.fontSize = '10px';
+    loadBtn.style.padding = '2px 6px';
+    loadBtn.textContent = '加载';
+    loadBtn.addEventListener('click', () => loadPreset(name));
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.style.fontSize = '10px';
+    deleteBtn.style.padding = '2px 6px';
+    deleteBtn.style.background = '#555';
+    deleteBtn.textContent = '删';
+    deleteBtn.addEventListener('click', () => deletePreset(name));
+
+    row.append(label, loadBtn, deleteBtn);
+    container.appendChild(row);
+  });
+}
+
+// ========== Keyboard Shortcuts ==========
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'Enter') {
+    e.preventDefault();
+    if (connectionState === 'DISCONNECTED') handleStart();
+    else if (connectionState === 'CONNECTED') handleStop();
+  }
+  if (e.ctrlKey && e.key === 'l') {
+    e.preventDefault();
+    loadSDK();
+  }
+  if (e.ctrlKey && e.key === 't') {
+    e.preventDefault();
+    document.getElementById('btn-touch-debug').click();
+  }
+  if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+    e.preventDefault();
+    document.getElementById('btn-stats-poll').click();
+  }
+});
+
+// ========== Init ==========
+buildUI();
+refreshPresetList();
+log('调试工具已就绪。请先配置 SDK 路径和参数，然后点击「加载 SDK」开始。', 'info');
+log('快捷键: Ctrl+L 加载SDK | Ctrl+Enter 启停 | Ctrl+T 触控调试 | Ctrl+Shift+S 实时状态', 'info');
+log('console 中可通过 window.__vePhone 直接访问 SDK 实例', 'info');
+
+// Auto-load if SDK path is already set
+const savedPath = localStorage.getItem('vephone-sdk-path');
+if (savedPath) {
+  document.getElementById('cfg-sdk-path').value = savedPath;
+}
+
+// Save config to localStorage on change
+document.querySelectorAll('#sidebar input, #sidebar select').forEach(el => {
+  el.addEventListener('change', () => {
+    const path = document.getElementById('cfg-sdk-path').value;
+    if (path) localStorage.setItem('vephone-sdk-path', path);
+  });
+});
+</script>
+
+</body>
+</html>
