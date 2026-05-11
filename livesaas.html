@@ -81,9 +81,31 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         font-size: 12px;
       }
+      .debug-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
       .debug-panel h3 {
-        margin: 0 0 8px;
+        margin: 0;
         font-size: 14px;
+      }
+      .debug-toggle {
+        width: auto !important;
+        margin: 0 !important;
+        padding: 3px 8px !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+      }
+      .debug-body {
+        margin-top: 8px;
+      }
+      .debug-panel.collapsed {
+        width: auto;
+        padding: 8px 10px;
+      }
+      .debug-panel.collapsed .debug-body {
+        display: none;
       }
       .debug-panel label {
         display: block;
@@ -117,6 +139,43 @@
         line-height: 1.4;
         word-break: break-all;
       }
+      @media (max-width: 768px) {
+        .wrapper {
+          width: 100vw;
+          min-width: 0;
+          padding-top: 72px;
+        }
+        .menu-top {
+          display: block;
+        }
+        .player {
+          width: 100vw;
+          min-width: 0;
+          height: calc(100vw / 16 * 9 + 55px);
+          min-height: 0;
+        }
+        .menu {
+          width: 100vw;
+          margin-left: 0;
+        }
+        .debug-panel {
+          left: 12px;
+          top: 12px;
+          right: auto;
+          max-width: calc(100vw - 24px);
+        }
+        .debug-panel:not(.collapsed) {
+          width: calc(100vw - 24px);
+          max-height: 72vh;
+          overflow-y: auto;
+        }
+        .rotate-btn {
+          top: 12px;
+          right: 12px;
+          padding: 8px 12px;
+          font-size: 13px;
+        }
+      }
     </style>
 </head>
 
@@ -128,21 +187,31 @@
 ">
   <div class='app'>
     <button class="rotate-btn" onclick="rotatePlayer()">旋转播放器</button>
-    <div class="debug-panel">
-      <h3>LiveSaaS 调试</h3>
-      <label>activityId</label>
-      <input id="cfg-activity-id" placeholder="必填">
-      <label>token</label>
-      <input id="cfg-token" placeholder="必填">
-      <label>service</label>
-      <input id="cfg-service" value="liveDemo">
-      <label>mode</label>
-      <select id="cfg-mode">
-        <option value="mobile-portrait">mobile-portrait</option>
-        <option value="mobile">mobile</option>
-      </select>
-      <button onclick="applyConfigToUrl()">应用配置</button>
-      <div class="hint">也可以直接访问：?activityId=xxx&token=xxx&service=liveDemo&mode=mobile-portrait</div>
+    <div class="debug-panel collapsed" id="debug-panel">
+      <div class="debug-header">
+        <h3>LiveSaaS 调试</h3>
+        <button class="debug-toggle" onclick="toggleDebugPanel()" id="debug-toggle">展开</button>
+      </div>
+      <div class="debug-body">
+        <label>activityId</label>
+        <input id="cfg-activity-id" placeholder="必填">
+        <label>token</label>
+        <input id="cfg-token" placeholder="必填">
+        <label>service</label>
+        <input id="cfg-service" value="liveDemo">
+        <label>mode</label>
+        <select id="cfg-mode">
+          <option value="mobile-portrait">mobile-portrait</option>
+          <option value="mobile">mobile</option>
+        </select>
+        <label>rotateFullscreen</label>
+        <select id="cfg-rotate-fullscreen">
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+        <button onclick="applyConfigToUrl()">应用配置</button>
+        <div class="hint">也可以直接访问：?activityId=xxx&token=xxx&service=liveDemo&mode=mobile-portrait&rotateFullscreen=true</div>
+      </div>
     </div>
     <div class="wrapper">
       <div class="menu-top">
@@ -151,7 +220,7 @@
       </div>
     </div>
   </div>
-  <script src="https://mediaservice-fe.volccdn.com/obj/vcloud-fe/livesaas-client/mobile/js/index.2.1.45.js"></script>
+  <script src="https://mediaservice-fe.volccdn.com/obj/vcloud-fe/livesaas-client/mobile/js/index.2.1.45-beta.15.js"></script>
 </body>
 <script>
   var query = new URLSearchParams(window.location.search);
@@ -159,13 +228,20 @@
   var token = query.get('token') || '';
   var activeService = query.get('service') || 'liveDemo';
   var playerMode = query.get('mode') || 'mobile-portrait';
-  var isGuest = true; // 是否为访客
-  var topOffset = 0; // 移动端顶部避让距离
+  var rotateFullscreen = query.get('rotateFullscreen') !== 'false';
 
   document.getElementById('cfg-activity-id').value = activityId;
   document.getElementById('cfg-token').value = token;
   document.getElementById('cfg-service').value = activeService;
   document.getElementById('cfg-mode').value = playerMode;
+  document.getElementById('cfg-rotate-fullscreen').value = String(rotateFullscreen);
+
+  function toggleDebugPanel() {
+    var panel = document.getElementById('debug-panel');
+    var toggle = document.getElementById('debug-toggle');
+    var collapsed = panel.classList.toggle('collapsed');
+    toggle.textContent = collapsed ? '展开' : '收起';
+  }
 
   function applyConfigToUrl() {
     var next = new URLSearchParams();
@@ -173,6 +249,7 @@
     next.set('token', document.getElementById('cfg-token').value.trim());
     next.set('service', document.getElementById('cfg-service').value.trim() || 'liveDemo');
     next.set('mode', document.getElementById('cfg-mode').value);
+    next.set('rotateFullscreen', document.getElementById('cfg-rotate-fullscreen').value);
     window.location.search = next.toString();
   }
 
@@ -180,60 +257,71 @@
     console.warn('缺少 activityId 或 token，请通过 URL 参数或左侧调试面板填写');
   }
   
-  var webSDK = new window.ByteLiveWebSDK({
+  var webSDK = null;
+  var sdkConfig = {
     activityId: activityId,
     token: token,
     service: activeService,
     mode: 1,
-                modules: [
-                    // {
-                    //     id: 'byte-live-app',
-                    //     mode: this.livePlayMode === 'landscape' ? 'mobile' : 'mobile-portrait'
-                    // },
-                    {
-                        id: "player", // 接入方页面内的元素ID, 视频模块会嵌入到此元素内
-                        mode: playerMode,
-                    },
-                    // {
-                    //     id: "content", // 接入方页面内的元素ID, 菜单栏模块会嵌入到此元素内
-                    //     mode: "menu",
-                    //     menu:['comment','imagetext','bandcontent','session','embeddedurl','invitelist']
-                    // }
-                ],
+    modules: [
+      {
+        id: "player", // 接入方页面内的元素ID, 视频模块会嵌入到此元素内
+        mode: playerMode,
+      }
+    ],
     options: {
-      enableMobileBackgroundImage: true,
-      disableAdHeaderRedirect: true,
-      disableAdMiddleRedirect: true,
-      disableAdAccountRedirect: true,
-      disableReservationCell: isGuest,
-      disableCheckInUI: isGuest,
-      disableCoupon: isGuest,
-      disableAdFloatingRedirect: isGuest,
-      disableCardRedirect: isGuest,
-      disabledShowExplainCard: isGuest,
-      disableLotteryTicketRedirect: isGuest,
-      disabledShopCartClick: isGuest,
-      mobileTopOffset: topOffset,
-      disableFeature:['cardlist','session'],
+      rotateFullscreen: rotateFullscreen
     }
-  })
-  webSDK.on('error', console.log);
+  };
+
+  function getByteLiveWebSDKConstructor() {
+    var exported = window.ByteLiveWebSDK;
+    var candidates = [
+      exported,
+      exported && exported.default,
+      exported && exported.ByteLiveWebSDK,
+      window.default,
+    ];
+    return candidates.find(function (item) { return typeof item === 'function'; });
+  }
+
+  function bindSDKEvents(instance) {
+    instance.on('error', console.log);
   
-  webSDK.on('card.explainStatusChange', (status) => {
-    console.log('商品卡片讲解状态变化事件触发-explainStatusChange:', status);
-  });
+    instance.on('card.explainStatusChange', (status) => {
+      console.log('商品卡片讲解状态变化事件触发-explainStatusChange:', status);
+    });
 
-  webSDK.on('card.configChange', (config) => {
-    console.log('商品卡片配置变化事件触发-configChange:', config);
-  });
+    instance.on('card.configChange', (config) => {
+      console.log('商品卡片配置变化事件触发-configChange:', config);
+    });
 
-  webSDK.on('card.Change', (change) => {
-    console.log('商品卡片变化事件触发-changeChange:', change);
-  });
+    instance.on('card.Change', (change) => {
+      console.log('商品卡片变化事件触发-changeChange:', change);
+    });
 
-  webSDK.on('player.status', (status) => {
-    console.log('播放器状态变化-player.status:', status);
-  });
+    instance.on('player.status', (status) => {
+      console.log('播放器状态变化-player.status:', status);
+    });
+  }
+
+  function initWebSDK(retryCount) {
+    var SDKConstructor = getByteLiveWebSDKConstructor();
+    if (!SDKConstructor) {
+      if (retryCount < 20) {
+        window.setTimeout(function () { initWebSDK(retryCount + 1); }, 100);
+        return;
+      }
+      console.error('未找到 ByteLiveWebSDK 构造函数，请检查 SDK 脚本是否正确加载', window.ByteLiveWebSDK);
+      return;
+    }
+    webSDK = new SDKConstructor(sdkConfig);
+    window.__liveSaaS = webSDK;
+    bindSDKEvents(webSDK);
+    console.log('LiveSaaS SDK 已初始化', sdkConfig);
+  }
+
+  initWebSDK(0);
 
   let currentRotation = 0;
   function rotatePlayer() {
