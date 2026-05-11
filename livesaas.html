@@ -203,8 +203,13 @@
           <option value="true">true</option>
           <option value="false">false</option>
         </select>
+        <label>disableRotateFullscreen</label>
+        <select id="cfg-disable-rotate-fullscreen">
+          <option value="false">false</option>
+          <option value="true">true</option>
+        </select>
         <button onclick="applyConfigToUrl()">应用配置</button>
-        <div class="hint">也可以直接访问：?activityId=xxx&token=xxx&service=liveDemo&mode=mobile-portrait&rotateFullscreen=true</div>
+        <div class="hint">也可以直接访问：?activityId=xxx&token=xxx&service=liveDemo&mode=mobile-portrait&rotateFullscreen=true&disableRotateFullscreen=false</div>
       </div>
     </div>
     <div class="wrapper">
@@ -222,6 +227,7 @@
   var activeService = query.get('service') || 'liveDemo';
   var playerMode = query.get('mode') || 'mobile-portrait';
   var rotateFullscreen = query.get('rotateFullscreen') !== 'false';
+  var disableRotateFullscreen = query.get('disableRotateFullscreen') === 'true';
   document.body.dataset.playerMode = playerMode;
 
   document.getElementById('cfg-activity-id').value = activityId;
@@ -229,6 +235,7 @@
   document.getElementById('cfg-service').value = activeService;
   document.getElementById('cfg-mode').value = playerMode;
   document.getElementById('cfg-rotate-fullscreen').value = String(rotateFullscreen);
+  document.getElementById('cfg-disable-rotate-fullscreen').value = String(disableRotateFullscreen);
 
   function toggleDebugPanel() {
     var panel = document.getElementById('debug-panel');
@@ -244,6 +251,7 @@
     next.set('service', document.getElementById('cfg-service').value.trim() || 'liveDemo');
     next.set('mode', document.getElementById('cfg-mode').value);
     next.set('rotateFullscreen', document.getElementById('cfg-rotate-fullscreen').value);
+    next.set('disableRotateFullscreen', document.getElementById('cfg-disable-rotate-fullscreen').value);
     window.location.search = next.toString();
   }
 
@@ -265,7 +273,7 @@
     ],
     options: {
       rotateFullscreen: rotateFullscreen,
-      disableRotateFullscreen:true
+      disableRotateFullscreen: disableRotateFullscreen
     }
   };
 
