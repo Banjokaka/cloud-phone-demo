@@ -95,12 +95,13 @@
   #sidebar label {
     font-size: 11px; color: var(--text2); display: block; margin-top: 6px;
   }
-  #sidebar input, #sidebar select {
+  #sidebar input, #sidebar select, #sidebar textarea {
     width: 100%; padding: 6px 8px; margin-top: 2px;
     background: var(--bg); color: var(--text); border: 1px solid var(--border);
     border-radius: 4px; font-size: 12px; font-family: var(--mono);
   }
-  #sidebar input:focus { border-color: var(--accent); outline: none; }
+  #sidebar textarea { min-height: 76px; resize: vertical; }
+  #sidebar input:focus, #sidebar textarea:focus { border-color: var(--accent); outline: none; }
   #sidebar .hint { font-size: 10px; color: var(--text2); margin-top: 2px; }
   #sidebar .section {
     background: var(--surface2); border-radius: var(--radius); padding: 10px;
@@ -536,6 +537,16 @@
     </details>
 
     <details class="section live-only" open>
+      <summary>扩展参数</summary>
+      <label>顶层初始化参数 JSON</label>
+      <textarea id="live-extra-params" placeholder='{ "disableCoupon": true, "chatFontSize": 28, "disableOfflineModal": true }'></textarea>
+      <span class="hint">会合并到 new ByteLiveWebSDK({...}) 的顶层参数里，适合 disableCoupon 这类开关</span>
+      <label>options JSON</label>
+      <textarea id="live-extra-options" placeholder='{ "liveEngineMode": "auto" }'></textarea>
+      <span class="hint">会合并到 options 字段里；如无特殊配置可留空</span>
+    </details>
+
+    <details class="section live-only" open>
       <summary>企业直播快捷操作</summary>
       <button onclick="loadEnterpriseLiveSDK()" style="font-size:11px;padding:5px 10px;margin-top:6px;width:100%;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer">加载 Web 观播 SDK</button>
       <button onclick="mountEnterpriseLiveRoom()" style="font-size:11px;padding:5px 10px;margin-top:6px;width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer">进入直播间 / 播放器</button>
@@ -924,6 +935,31 @@ function resetEnterpriseLiveMount() {
   document.getElementById('live-empty').style.display = '';
 }
 
+function readOptionalObjectJson(id, label) {
+  const raw = document.getElementById(id).value.trim();
+  if (!raw) return {};
+  const parsed = safeJsonParse(raw, label);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${label} 需要是对象格式，例如 { "disableCoupon": true }`);
+  }
+  return parsed;
+}
+
+function mergeEnterpriseLiveExtraConfig(config) {
+  const extraParams = readOptionalObjectJson('live-extra-params', '顶层初始化参数 JSON');
+  const extraOptions = readOptionalObjectJson('live-extra-options', 'options JSON');
+  if (extraParams.options && (typeof extraParams.options !== 'object' || Array.isArray(extraParams.options))) {
+    throw new Error('顶层初始化参数里的 options 需要是对象格式');
+  }
+  const merged = { ...config, ...extraParams };
+  merged.options = {
+    ...(config.options || {}),
+    ...extraOptions,
+    ...(extraParams.options || {}),
+  };
+  return merged;
+}
+
 function getEnterpriseLiveConfig() {
   const service = document.getElementById('live-service').value.trim() || 'Demo';
   const activityId = document.getElementById('live-activity-id').value.trim();
@@ -947,14 +983,14 @@ function getEnterpriseLiveConfig() {
     if (!vodPlayerToken) missing.push('vodPlayerToken');
     if (!vodPlayerConfigId) missing.push('vodPlayerConfigId');
     if (missing.length > 0) throw new Error(`点播参数缺失: ${missing.join(', ')}`);
-    return {
+    return mergeEnterpriseLiveExtraConfig({
       vodPlayerToken,
       vid,
       vodPlayerConfigId,
       service,
       modules: [{ id: 'bytelive-player', mode: 'player' }],
       options: {},
-    };
+    });
   }
 
   const missing = [];
@@ -962,14 +998,14 @@ function getEnterpriseLiveConfig() {
   if (!token) missing.push('token');
   if (missing.length > 0) throw new Error(`直播间参数缺失: ${missing.join(', ')}`);
 
-  return {
+  return mergeEnterpriseLiveExtraConfig({
     activityId: Number.isNaN(Number(activityId)) ? activityId : Number(activityId),
     token,
     service,
     mode: Number(document.getElementById('live-mode').value || 1),
     modules,
     options: {},
-  };
+  });
 }
 
 async function mountEnterpriseLiveRoom() {
