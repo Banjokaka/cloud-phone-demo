@@ -538,12 +538,9 @@
 
     <details class="section live-only" open>
       <summary>扩展参数</summary>
-      <label>顶层初始化参数 JSON</label>
-      <textarea id="live-extra-params" placeholder='{ "disableCoupon": true, "chatFontSize": 28, "disableOfflineModal": true }'></textarea>
-      <span class="hint">会合并到 new ByteLiveWebSDK({...}) 的顶层参数里，适合 disableCoupon 这类开关</span>
-      <label>options JSON</label>
-      <textarea id="live-extra-options" placeholder='{ "liveEngineMode": "auto" }'></textarea>
-      <span class="hint">会合并到 options 字段里；如无特殊配置可留空</span>
+      <label>初始化参数 JSON</label>
+      <textarea id="live-extra-params" placeholder='{ "disableCoupon": true, "chatFontSize": 28, "options": { "liveEngineMode": "auto" } }'></textarea>
+      <span class="hint">会合并到 new ByteLiveWebSDK({...})；顶层开关和 options 都写在这里</span>
     </details>
 
     <details class="section live-only" open>
@@ -946,15 +943,13 @@ function readOptionalObjectJson(id, label) {
 }
 
 function mergeEnterpriseLiveExtraConfig(config) {
-  const extraParams = readOptionalObjectJson('live-extra-params', '顶层初始化参数 JSON');
-  const extraOptions = readOptionalObjectJson('live-extra-options', 'options JSON');
+  const extraParams = readOptionalObjectJson('live-extra-params', '初始化参数 JSON');
   if (extraParams.options && (typeof extraParams.options !== 'object' || Array.isArray(extraParams.options))) {
-    throw new Error('顶层初始化参数里的 options 需要是对象格式');
+    throw new Error('初始化参数 JSON 里的 options 需要是对象格式');
   }
   const merged = { ...config, ...extraParams };
   merged.options = {
     ...(config.options || {}),
-    ...extraOptions,
     ...(extraParams.options || {}),
   };
   return merged;
