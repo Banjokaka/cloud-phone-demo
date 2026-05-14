@@ -1881,7 +1881,7 @@ const openApiDangerWords = ['Create', 'Update', 'Delete', 'Set', 'Start', 'Stop'
 let openApiRequestUrlParseTimer = null;
 let openApiRequestUrlWatchTimer = null;
 let lastParsedOpenApiRequestUrl = '';
-const openApiProxyUrl = 'https://1302048544-4notq8ddtl.ap-guangzhou.tencentscf.com';
+const openApiProxyUrl = 'http://127.0.0.1:8787/volc-openapi';
 const openApiProducts = [
   { id: 'volc-vod-cn-north-1', platform: '火山引擎', product: '视频点播', regionLabel: '华北', service: 'vod', region: 'cn-north-1' },
   { id: 'volc-vod-ap-southeast-1', platform: '火山引擎', product: '视频点播', regionLabel: '亚太东南（柔佛）', service: 'vod', region: 'ap-southeast-1' },
@@ -2296,7 +2296,7 @@ async function sendOpenApiRequest() {
     log(`OpenAPI 返回: HTTP ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
   } catch (err) {
     const corsHint = String(err.message || err).includes('Failed to fetch')
-      ? `\n\n未能访问腾讯云函数代理：${openApiProxyUrl}。请先确认函数已部署，并且 CORS 已开启。`
+      ? `\n\n未能访问本地 OpenAPI 代理：${openApiProxyUrl}。请先启动本地代理后再发送请求。`
       : '';
     setOpenApiResult(`Error: ${err.message || err}${corsHint}`, 'error');
     log(`OpenAPI 请求失败: ${err.message || err}`, 'error');
