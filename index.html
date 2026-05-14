@@ -68,7 +68,11 @@
     background: var(--primary); color: #fff;
   }
   body[data-scene="cloud-phone"] .live-only,
-  body[data-scene="enterprise-live"] .cloud-only { display: none !important; }
+  body[data-scene="cloud-phone"] .openapi-only,
+  body[data-scene="enterprise-live"] .cloud-only,
+  body[data-scene="enterprise-live"] .openapi-only,
+  body[data-scene="openapi"] .cloud-only,
+  body[data-scene="openapi"] .live-only { display: none !important; }
 
   /* Layout */
   #main {
@@ -120,7 +124,7 @@
   /* 不干预 SDK 内部的元素定位，否则会破坏触控事件层 */
 
   /* Right API Panel — 竖向排列 */
-  #api-panel, #live-api-panel {
+  #api-panel, #live-api-panel, #openapi-result-panel {
     width: 360px; flex-shrink: 0;
     background: var(--surface);
     border-left: 1px solid var(--border);
@@ -130,6 +134,108 @@
   #api-panel.collapsed, #live-api-panel.collapsed {
     width: 0; overflow: hidden; border-left: none;
   }
+  body[data-scene="openapi"] #sidebar { width: 380px; }
+  #openapi-workbench {
+    width: min(980px, 100%);
+    margin: 0 auto;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px;
+    min-height: 0;
+  }
+  .openapi-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+    gap: 12px;
+  }
+  .openapi-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    min-width: 0;
+  }
+  .openapi-box h2, .openapi-box h3 {
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .openapi-box p {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.55;
+  }
+  .openapi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .openapi-field label, .openapi-section label {
+    display: block;
+    font-size: 11px;
+    color: var(--text2);
+    margin: 8px 0 3px;
+  }
+  .openapi-field input, .openapi-field select, .openapi-section input,
+  .openapi-section select, .openapi-section textarea {
+    width: 100%;
+    padding: 7px 9px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+  .openapi-section textarea { min-height: 112px; resize: vertical; }
+  .openapi-field input:focus, .openapi-field select:focus,
+  .openapi-section input:focus, .openapi-section select:focus,
+  .openapi-section textarea:focus { border-color: var(--accent); outline: none; }
+  .openapi-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .openapi-actions button {
+    padding: 7px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .openapi-actions button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .openapi-actions button:hover { opacity: .88; }
+  .openapi-pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .openapi-pill {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .openapi-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .openapi-request-preview, .openapi-result-output {
+    font-family: var(--mono);
+    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px;
+    overflow: auto;
+  }
+  .openapi-request-preview { max-height: 220px; }
+  .openapi-result-output { flex: 1; min-height: 220px; color: var(--text2); }
+  #openapi-result-panel { padding: 12px; gap: 10px; }
+  #openapi-result-panel h3 { font-size: 13px; color: var(--accent); }
+  #openapi-result-panel .hint { font-size: 11px; color: var(--text2); line-height: 1.5; }
   .api-category {
     border-bottom: 1px solid var(--border);
   }
@@ -356,6 +462,8 @@
     #live-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     #bytelive-layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 180px; }
     #bytelive-menu { border-left: 0; border-top: 1px solid var(--border); }
+    .openapi-hero, .openapi-grid { grid-template-columns: 1fr; }
+    #openapi-result-panel { width: 100% !important; max-height: 42vh; }
   }
 </style>
 </head>
@@ -367,6 +475,7 @@
   <div class="scene-switch">
     <button id="scene-cloud-phone" class="active" type="button">云手机</button>
     <button id="scene-enterprise-live" type="button">企业直播</button>
+    <button id="scene-openapi" type="button">OpenAPI</button>
   </div>
   <span id="state-badge" class="badge badge-disconnected">未连接</span>
   <span style="font-size:11px;color:var(--text2)" id="version-display"></span>
@@ -378,6 +487,8 @@
   <button id="btn-live-load" class="live-only">加载 Web 观播 SDK</button>
   <button id="btn-live-mount" class="live-only" disabled>进入直播间</button>
   <button id="btn-live-destroy" class="danger live-only" disabled>销毁直播间</button>
+  <button id="btn-openapi-sign" class="openapi-only">生成签名</button>
+  <button id="btn-openapi-send" class="openapi-only">发送请求</button>
   <span class="cloud-only" style="color:var(--border);margin:0 4px">|</span>
   <button id="btn-touch-debug" class="cloud-only" style="font-size:11px">触控调试</button>
   <button id="btn-stats-poll" class="cloud-only" style="font-size:11px">实时状态</button>
@@ -550,6 +661,46 @@
       <button onclick="destroyEnterpriseLiveRoom()" style="font-size:11px;padding:5px 10px;margin-top:6px;width:100%;background:#522;color:#fff;border:1px solid var(--border);border-radius:4px;cursor:pointer">销毁实例</button>
       <span class="hint" style="margin-top:6px">本地 localhost 调试可能无法播放预告和回放，线上调试效果更完整</span>
     </details>
+
+    <div class="section openapi-only">
+      <h3>OpenAPI 鉴权</h3>
+      <label>AccessKeyID</label>
+      <input id="openapi-ak" type="password" value="" placeholder="AK">
+      <label>SecretAccessKey</label>
+      <input id="openapi-sk" type="password" value="" placeholder="SK">
+      <label>SessionToken</label>
+      <input id="openapi-token" value="" placeholder="STS Token，可选">
+      <label>平台</label>
+      <select id="openapi-platform"></select>
+      <label>产品</label>
+      <select id="openapi-product-kind"></select>
+      <label>区域</label>
+      <select id="openapi-product"></select>
+      <label>Region</label>
+      <input id="openapi-region" value="" placeholder="选择产品后自动填充" readonly>
+      <span class="hint">密钥只保存在当前浏览器页面中。建议使用临时 AK/SK。</span>
+    </div>
+
+    <details class="section openapi-only" open>
+      <summary>请求目标</summary>
+      <label>请求地址</label>
+      <input id="openapi-request-url" value="https://open.volcengineapi.com?Action=DetailPod&Version=2025-05-01" placeholder="https://open.volcengineapi.com?Action=DetailPod&Version=2025-05-01">
+      <span class="hint">粘贴火山 OpenAPI 文档里的请求地址，会自动拆出 Endpoint / Action / Version；Service 和 Region 由产品选择自动填充</span>
+      <label>Endpoint</label>
+      <input id="openapi-endpoint" value="https://open.volcengineapi.com/" placeholder="https://open.volcengineapi.com/">
+      <label>Service</label>
+      <input id="openapi-service" value="" placeholder="选择产品后自动填充" readonly>
+      <label>Version</label>
+      <input id="openapi-version" value="2023-01-01" placeholder="API Version">
+      <label>Action</label>
+      <input id="openapi-action" value="" placeholder="OpenAPI Action">
+      <label>Method</label>
+      <select id="openapi-method">
+        <option value="POST">POST</option>
+        <option value="GET">GET</option>
+      </select>
+    </details>
+
   </div>
 
   <!-- Center: Player -->
@@ -580,6 +731,32 @@
         <div class="live-meta-item"><span>终端</span><strong id="live-meta-terminal">PC 模块化</strong></div>
         <div class="live-meta-item"><span>activityId / vid</span><strong id="live-meta-id">未填写</strong></div>
         <div class="live-meta-item"><span>实例</span><strong id="live-meta-instance">未创建</strong></div>
+      </div>
+    </div>
+    <div id="openapi-workbench" class="openapi-only">
+      <div class="openapi-box openapi-section">
+        <h3>参数与请求体</h3>
+        <div class="openapi-grid">
+          <div>
+            <label>Query 参数 JSON</label>
+            <textarea id="openapi-query" placeholder='{ "Action": "...", "Version": "..." }'></textarea>
+          </div>
+          <div>
+            <label>Body JSON</label>
+            <textarea id="openapi-body" placeholder='{ }'>{}</textarea>
+          </div>
+        </div>
+        <div class="openapi-actions">
+          <button type="button" onclick="applyOpenApiRequestUrl()">解析请求地址</button>
+          <button class="primary" type="button" onclick="sendOpenApiRequest()">发送请求</button>
+          <button type="button" onclick="previewOpenApiRequest()">生成请求预览</button>
+          <button type="button" onclick="copyOpenApiCurl()">复制 cURL</button>
+          <button type="button" onclick="saveOpenApiDraft()">保存草稿</button>
+          <button type="button" onclick="loadOpenApiDraft()">加载草稿</button>
+          <button type="button" onclick="clearOpenApiResult()">清空结果</button>
+        </div>
+        <label>请求预览</label>
+        <div id="openapi-preview" class="openapi-request-preview">// 还没有生成请求</div>
       </div>
     </div>
   </div>
@@ -614,6 +791,11 @@
         </div>
       </div>
     </div>
+  </div>
+  <div id="openapi-result-panel" class="openapi-only">
+    <h3>OpenAPI 返回</h3>
+    <div class="hint">这里会展示签名信息、HTTP 状态、响应 JSON 和错误摘要。敏感字段会自动脱敏。</div>
+    <div id="openapi-result" class="openapi-result-output">// 等待请求</div>
   </div>
 </div>
 
@@ -750,10 +932,15 @@ function setScene(scene) {
   document.body.dataset.scene = scene;
   document.getElementById('scene-cloud-phone').classList.toggle('active', scene === 'cloud-phone');
   document.getElementById('scene-enterprise-live').classList.toggle('active', scene === 'enterprise-live');
+  document.getElementById('scene-openapi').classList.toggle('active', scene === 'openapi');
   if (scene === 'enterprise-live') {
     document.getElementById('state-badge').textContent = liveSDKInstance ? 'LIVE_READY' : (liveSDKLoaded ? 'SDK_READY' : '未加载');
     document.getElementById('state-badge').className = `badge ${liveSDKInstance ? 'badge-connected' : (liveSDKLoaded ? 'badge-connecting' : 'badge-disconnected')}`;
     document.getElementById('version-display').textContent = `Web 观播 SDK ${document.getElementById('live-sdk-version').value.trim() || '2.1.45'}`;
+  } else if (scene === 'openapi') {
+    document.getElementById('state-badge').textContent = 'OpenAPI';
+    document.getElementById('state-badge').className = 'badge badge-connecting';
+    document.getElementById('version-display').textContent = '火山引擎签名调试';
   } else {
     updateState(connectionState);
     document.getElementById('version-display').textContent =
@@ -1689,9 +1876,493 @@ function buildUI() {
   });
 }
 
+// ========== Volcengine OpenAPI Workbench ==========
+const openApiDangerWords = ['Create', 'Update', 'Delete', 'Set', 'Start', 'Stop', 'Restart', 'Enable', 'Disable', 'Bind', 'Unbind'];
+let openApiRequestUrlParseTimer = null;
+let openApiRequestUrlWatchTimer = null;
+let lastParsedOpenApiRequestUrl = '';
+const openApiProducts = [
+  { id: 'volc-vod-cn-north-1', platform: '火山引擎', product: '视频点播', regionLabel: '华北', service: 'vod', region: 'cn-north-1' },
+  { id: 'volc-vod-ap-southeast-1', platform: '火山引擎', product: '视频点播', regionLabel: '亚太东南（柔佛）', service: 'vod', region: 'ap-southeast-1' },
+  { id: 'byteplus-vod-ap-southeast-1', platform: 'byteplus', product: '视频点播', regionLabel: 'Asia Pacific (Johor)', service: 'vod', region: 'ap-southeast-1' },
+  { id: 'byteplus-vod-ap-singapore-1', platform: 'byteplus', product: '视频点播', regionLabel: 'Asia Pacific (Singapore)', service: 'vod', region: 'ap-singapore-1' },
+  { id: 'volc-acep-cn-north-1', platform: '火山引擎', product: '云手机', regionLabel: '华北', service: 'acep', region: 'cn-north-1' },
+  { id: 'volc-livesaas-cn-north-1', platform: '火山引擎', product: '企业直播', regionLabel: '华北', service: 'livesaas', region: 'cn-north-1' },
+  { id: 'byteplus-livesaas-ap-singapore-1', platform: 'byteplus', product: '企业直播', regionLabel: 'Asia Pacific (Singapore)', service: 'livesaas', region: 'ap-singapore-1' },
+  { id: 'volc-live-cn-north-1', platform: '火山引擎', product: '视频直播', regionLabel: '华北', service: 'live', region: 'cn-north-1' },
+  { id: 'byteplus-live-ap-singapore-1', platform: 'byteplus', product: '视频直播', regionLabel: 'Asia Pacific (Singapore)', service: 'live', region: 'ap-singapore-1' },
+  { id: 'volc-rtc-cn-north-1', platform: '火山引擎', product: 'RTC', regionLabel: '华北', service: 'rtc', region: 'cn-north-1' },
+  { id: 'volc-rtc-ap-southeast-1', platform: '火山引擎', product: 'RTC', regionLabel: '亚太东南（柔佛）', service: 'rtc', region: 'ap-southeast-1' },
+  { id: 'byteplus-rtc-ap-singapore-1', platform: 'byteplus', product: 'RTC', regionLabel: 'Asia Pacific (Singapore)', service: 'rtc', region: 'ap-singapore-1' },
+];
+
+function getOpenApiValue(id) {
+  return document.getElementById(id)?.value.trim() || '';
+}
+
+function setOpenApiValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value == null ? '' : String(value);
+}
+
+function getSelectedOpenApiProduct() {
+  const selectedId = getOpenApiValue('openapi-product');
+  return openApiProducts.find(item => item.id === selectedId) || null;
+}
+
+function getOpenApiProductLabel(product) {
+  return `${product.platform}-${product.product} / ${product.regionLabel}`;
+}
+
+function applyOpenApiProduct(productId = getOpenApiValue('openapi-product')) {
+  const product = openApiProducts.find(item => item.id === productId);
+  if (!product) {
+    setOpenApiValue('openapi-service', '');
+    setOpenApiValue('openapi-region', '');
+    return null;
+  }
+  setOpenApiValue('openapi-service', product.service);
+  setOpenApiValue('openapi-region', product.region);
+  return product;
+}
+
+function setSelectOptions(select, options, placeholderText) {
+  if (!select) return;
+  select.textContent = '';
+  const empty = document.createElement('option');
+  empty.value = '';
+  empty.textContent = placeholderText;
+  select.appendChild(empty);
+  options.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.value;
+    option.textContent = item.label;
+    select.appendChild(option);
+  });
+}
+
+function uniqueOpenApiOptions(items, getValue) {
+  return [...new Set(items.map(getValue))].map(value => ({ value, label: value }));
+}
+
+function syncOpenApiProductCascader(productId) {
+  const product = openApiProducts.find(item => item.id === productId);
+  if (!product) return;
+  setOpenApiValue('openapi-platform', product.platform);
+  updateOpenApiProductKindOptions(product.platform, product.product);
+  updateOpenApiRegionOptions(product.platform, product.product, product.id);
+  applyOpenApiProduct(product.id);
+}
+
+function updateOpenApiProductKindOptions(platform = getOpenApiValue('openapi-platform'), selectedProduct = '') {
+  const products = platform ? openApiProducts.filter(item => item.platform === platform) : [];
+  const productOptions = uniqueOpenApiOptions(products, item => item.product);
+  setSelectOptions(
+    document.getElementById('openapi-product-kind'),
+    productOptions,
+    '请选择产品'
+  );
+  const nextProduct = selectedProduct || (productOptions.length === 1 ? productOptions[0].value : '');
+  if (nextProduct) {
+    setOpenApiValue('openapi-product-kind', nextProduct);
+    updateOpenApiRegionOptions(platform, nextProduct);
+  } else {
+    setSelectOptions(document.getElementById('openapi-product'), [], '请选择区域');
+    applyOpenApiProduct('');
+  }
+}
+
+function updateOpenApiRegionOptions(
+  platform = getOpenApiValue('openapi-platform'),
+  productKind = getOpenApiValue('openapi-product-kind'),
+  selectedProductId = ''
+) {
+  const matchedProducts = openApiProducts
+    .filter(item => item.platform === platform && item.product === productKind);
+  const regions = matchedProducts
+    .map(item => ({ value: item.id, label: `${item.regionLabel} (${item.region})` }));
+  setSelectOptions(document.getElementById('openapi-product'), regions, '请选择区域');
+  const nextProductId = selectedProductId || (regions.length === 1 ? regions[0].value : '');
+  if (nextProductId) {
+    setOpenApiValue('openapi-product', nextProductId);
+    applyOpenApiProduct(nextProductId);
+  } else {
+    applyOpenApiProduct('');
+  }
+}
+
+function buildOpenApiProductSelect() {
+  setSelectOptions(
+    document.getElementById('openapi-platform'),
+    uniqueOpenApiOptions(openApiProducts, item => item.platform),
+    '请选择平台'
+  );
+  setSelectOptions(document.getElementById('openapi-product-kind'), [], '请选择产品');
+  setSelectOptions(document.getElementById('openapi-product'), [], '请选择区域');
+}
+
+function maskOpenApiSecrets(value) {
+  const sensitiveKeys = ['secretaccesskey', 'secretkey', 'accesskeysecret', 'authorization', 'x-security-token', 'sessiontoken', 'token'];
+  const cloneAndMask = (input, key = '') => {
+    if (input == null) return input;
+    if (sensitiveKeys.includes(String(key).toLowerCase())) return '***';
+    if (Array.isArray(input)) return input.map(item => cloneAndMask(item));
+    if (typeof input === 'object') {
+      return Object.fromEntries(Object.entries(input).map(([childKey, childValue]) => [childKey, cloneAndMask(childValue, childKey)]));
+    }
+    return input;
+  };
+  const text = typeof value === 'string' ? value : JSON.stringify(cloneAndMask(value), null, 2);
+  return text
+    .replace(/(Credential=)[^,\s]+/g, '$1***')
+    .replace(/(Signature=)[a-f0-9]+/gi, '$1***')
+    .replace(/(Bearer\s+)[A-Za-z0-9._-]+/g, '$1***');
+}
+
+function setOpenApiResult(value, level = 'info') {
+  const el = document.getElementById('openapi-result');
+  el.textContent = maskOpenApiSecrets(value);
+  el.style.color = level === 'error' ? 'var(--error)' : (level === 'success' ? 'var(--success)' : 'var(--text2)');
+}
+
+function parseOpenApiJson(id, fallback, label) {
+  const raw = getOpenApiValue(id);
+  if (!raw) return fallback;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    try {
+      const repaired = raw
+        .replace(/\/\/.*$/gm, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/'/g, '"')
+        .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":')
+        .replace(/,(\s*[}\]])/g, '$1');
+      parsed = JSON.parse(repaired);
+      setOpenApiValue(id, JSON.stringify(parsed, null, 2));
+      log(`${label} 已自动修正为标准 JSON`, 'warn');
+    } catch {
+      throw new Error(`${label} 解析失败: ${err.message}`);
+    }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${label} 需要是 JSON 对象`);
+  }
+  return parsed;
+}
+
+function applyOpenApiRequestUrl(options = {}) {
+  const raw = getOpenApiValue('openapi-request-url');
+  if (!raw) return null;
+  let url;
+  try {
+    url = new URL(raw);
+  } catch (err) {
+    if (options.required) throw new Error(`请求地址格式不正确: ${err.message}`);
+    return null;
+  }
+
+  const query = {};
+  url.searchParams.forEach((value, key) => {
+    query[key] = value;
+  });
+  const action = query.Action || query.action || getOpenApiValue('openapi-action');
+  const version = query.Version || query.version || getOpenApiValue('openapi-version');
+  const endpointPath = url.pathname && url.pathname !== '/' ? url.pathname : '/';
+  const endpoint = `${url.origin}${endpointPath}`;
+
+  setOpenApiValue('openapi-endpoint', endpoint);
+  if (action) setOpenApiValue('openapi-action', action);
+  if (version) setOpenApiValue('openapi-version', version);
+  setOpenApiValue('openapi-query', JSON.stringify({
+    ...parseOpenApiJson('openapi-query', {}, 'Query 参数 JSON'),
+    ...query,
+    ...(action ? { Action: action } : {}),
+    ...(version ? { Version: version } : {}),
+  }, null, 2));
+
+  if (options.log !== false) {
+    log(`已从请求地址解析: ${action || '未识别 Action'} / ${version || '未识别 Version'}`, action && version ? 'success' : 'warn');
+  }
+  lastParsedOpenApiRequestUrl = raw;
+  return { endpoint, action, version, query };
+}
+
+function scheduleOpenApiRequestUrlParse() {
+  if (openApiRequestUrlParseTimer) clearTimeout(openApiRequestUrlParseTimer);
+  try {
+    applyOpenApiRequestUrl({ log: false });
+  } catch {
+    // 输入过程中可能短暂不是完整 URL，后面的防抖解析会再试一次。
+  }
+  openApiRequestUrlParseTimer = setTimeout(() => {
+    try {
+      applyOpenApiRequestUrl({ log: false });
+    } catch {
+      // 用户输入过程中可能短暂不是完整 URL，等下一次输入再解析。
+    }
+  }, 250);
+}
+
+function startOpenApiRequestUrlWatch() {
+  if (openApiRequestUrlWatchTimer) clearInterval(openApiRequestUrlWatchTimer);
+  openApiRequestUrlWatchTimer = setInterval(() => {
+    const raw = getOpenApiValue('openapi-request-url');
+    if (raw && raw !== lastParsedOpenApiRequestUrl) {
+      scheduleOpenApiRequestUrlParse();
+    }
+  }, 300);
+}
+
+function stopOpenApiRequestUrlWatch() {
+  if (openApiRequestUrlWatchTimer) {
+    clearInterval(openApiRequestUrlWatchTimer);
+    openApiRequestUrlWatchTimer = null;
+  }
+}
+
+function canonicalOpenApiQuery(params) {
+  const encode = value => encodeURIComponent(String(value)).replace(/[!'()*]/g, ch => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`);
+  return Object.keys(params)
+    .filter(key => params[key] !== undefined && params[key] !== null && params[key] !== '')
+    .sort()
+    .map(key => `${encode(key)}=${encode(params[key])}`)
+    .join('&');
+}
+
+async function sha256Hex(text) {
+  const data = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hmacBytes(key, text) {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key instanceof Uint8Array ? key : new TextEncoder().encode(key),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(text));
+  return new Uint8Array(signature);
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function toVolcDate(date = new Date()) {
+  return date.toISOString().replace(/[:-]|\.\d{3}/g, '');
+}
+
+function getOpenApiConfig() {
+  applyOpenApiRequestUrl({ log: false });
+  applyOpenApiProduct();
+  const endpoint = getOpenApiValue('openapi-endpoint') || 'https://open.volcengineapi.com/';
+  const endpointUrl = new URL(endpoint);
+  const action = getOpenApiValue('openapi-action');
+  const version = getOpenApiValue('openapi-version');
+  const method = getOpenApiValue('openapi-method') || 'POST';
+  const query = parseOpenApiJson('openapi-query', {}, 'Query 参数 JSON');
+  const body = parseOpenApiJson('openapi-body', {}, 'Body JSON');
+  if (action) query.Action = action;
+  if (version) query.Version = version;
+  return {
+    ak: getOpenApiValue('openapi-ak'),
+    sk: getOpenApiValue('openapi-sk'),
+    token: getOpenApiValue('openapi-token'),
+    region: getOpenApiValue('openapi-region') || 'cn-north-1',
+    service: getOpenApiValue('openapi-service'),
+    method,
+    endpointUrl,
+    action: query.Action,
+    version: query.Version,
+    query,
+    body,
+  };
+}
+
+async function signOpenApiRequest() {
+  const cfg = getOpenApiConfig();
+  if (!cfg.ak || !cfg.sk) throw new Error('请先填写 AccessKeyID 和 SecretAccessKey');
+  if (!cfg.service) throw new Error('请填写 Service');
+  if (!cfg.action || !cfg.version) throw new Error('请填写 Action 和 Version');
+
+  const now = toVolcDate();
+  const shortDate = now.slice(0, 8);
+  const pathname = cfg.endpointUrl.pathname || '/';
+  const queryString = canonicalOpenApiQuery(cfg.query);
+  const bodyText = cfg.method === 'GET' ? '' : JSON.stringify(cfg.body || {});
+  const payloadHash = await sha256Hex(bodyText);
+  const signedHeaders = cfg.token ? 'content-type;host;x-date;x-security-token' : 'content-type;host;x-date';
+  const canonicalHeaders = [
+    'content-type:application/json',
+    `host:${cfg.endpointUrl.host}`,
+    `x-date:${now}`,
+    cfg.token ? `x-security-token:${cfg.token}` : null,
+  ].filter(Boolean).join('\n') + '\n';
+  const canonicalRequest = [
+    cfg.method,
+    pathname,
+    queryString,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join('\n');
+  const credentialScope = `${shortDate}/${cfg.region}/${cfg.service}/request`;
+  const stringToSign = [
+    'HMAC-SHA256',
+    now,
+    credentialScope,
+    await sha256Hex(canonicalRequest),
+  ].join('\n');
+  const kDate = await hmacBytes(cfg.sk, shortDate);
+  const kRegion = await hmacBytes(kDate, cfg.region);
+  const kService = await hmacBytes(kRegion, cfg.service);
+  const kSigning = await hmacBytes(kService, 'request');
+  const signature = bytesToHex(await hmacBytes(kSigning, stringToSign));
+  const authorization = `HMAC-SHA256 Credential=${cfg.ak}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Date': now,
+    Authorization: authorization,
+  };
+  if (cfg.token) headers['X-Security-Token'] = cfg.token;
+  const url = `${cfg.endpointUrl.origin}${pathname}?${queryString}`;
+  return {
+    url,
+    method: cfg.method,
+    headers,
+    bodyText,
+    canonicalRequest,
+    stringToSign,
+    action: cfg.action,
+    service: cfg.service,
+  };
+}
+
+async function previewOpenApiRequest() {
+  try {
+    const signed = await signOpenApiRequest();
+    document.getElementById('openapi-preview').textContent = maskOpenApiSecrets({
+      method: signed.method,
+      url: signed.url,
+      headers: signed.headers,
+      body: signed.bodyText ? JSON.parse(signed.bodyText) : null,
+      canonicalRequest: signed.canonicalRequest,
+    });
+    log(`OpenAPI 请求预览已生成: ${signed.service}.${signed.action}`, 'success');
+    return signed;
+  } catch (err) {
+    document.getElementById('openapi-preview').textContent = `Error: ${err.message || err}`;
+    log(`OpenAPI 请求预览失败: ${err.message || err}`, 'error');
+    throw err;
+  }
+}
+
+async function sendOpenApiRequest() {
+  let signed;
+  try {
+    signed = await previewOpenApiRequest();
+    if (openApiDangerWords.some(word => signed.action?.startsWith(word))) {
+      const ok = window.confirm(`即将调用 ${signed.action}，这看起来可能会改变线上配置。确认继续吗？`);
+      if (!ok) {
+        setOpenApiResult('已取消发送。', 'info');
+        return;
+      }
+    }
+    const response = await fetch(signed.url, {
+      method: signed.method,
+      headers: signed.headers,
+      body: signed.method === 'GET' ? undefined : signed.bodyText,
+    });
+    const text = await response.text();
+    let payload;
+    try { payload = JSON.parse(text); } catch { payload = text; }
+    setOpenApiResult({
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data: payload,
+    }, response.ok ? 'success' : 'error');
+    log(`OpenAPI 返回: HTTP ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+  } catch (err) {
+    const corsHint = String(err.message || err).includes('Failed to fetch')
+      ? '\n\n如果是浏览器 CORS 拦截，需要线上转发接口处理，纯浏览器直连无法绕过。'
+      : '';
+    setOpenApiResult(`Error: ${err.message || err}${corsHint}`, 'error');
+    log(`OpenAPI 请求失败: ${err.message || err}`, 'error');
+  }
+}
+
+async function copyOpenApiCurl() {
+  try {
+    const signed = await previewOpenApiRequest();
+    const headerLines = Object.entries(signed.headers)
+      .map(([key, value]) => `  -H '${key}: ${value}' \\`)
+      .join('\n');
+    const bodyLine = signed.method === 'GET' ? '' : `\n  --data '${signed.bodyText}'`;
+    const curl = `curl -X ${signed.method} '${signed.url}' \\\n${headerLines}${bodyLine}`;
+    await navigator.clipboard.writeText(curl);
+    log('cURL 已复制到剪贴板', 'success');
+  } catch (err) {
+    log(`复制 cURL 失败: ${err.message || err}`, 'error');
+  }
+}
+
+function clearOpenApiResult() {
+  document.getElementById('openapi-preview').textContent = '// 还没有生成请求';
+  setOpenApiResult('// 等待请求');
+}
+
+function saveOpenApiDraft() {
+  const draft = {
+    endpoint: getOpenApiValue('openapi-endpoint'),
+    requestUrl: getOpenApiValue('openapi-request-url'),
+    product: getOpenApiValue('openapi-product'),
+    service: getOpenApiValue('openapi-service'),
+    version: getOpenApiValue('openapi-version'),
+    action: getOpenApiValue('openapi-action'),
+    method: getOpenApiValue('openapi-method'),
+    region: getOpenApiValue('openapi-region'),
+    query: getOpenApiValue('openapi-query'),
+    body: getOpenApiValue('openapi-body'),
+  };
+  localStorage.setItem('volc-openapi-draft', JSON.stringify(draft));
+  log('OpenAPI 草稿已保存', 'success');
+}
+
+function loadOpenApiDraft() {
+  const raw = localStorage.getItem('volc-openapi-draft');
+  if (!raw) {
+    log('暂无 OpenAPI 草稿', 'warn');
+    return;
+  }
+  const draft = JSON.parse(raw);
+  Object.entries({
+    'openapi-endpoint': draft.endpoint,
+    'openapi-request-url': draft.requestUrl,
+    'openapi-product': draft.product,
+    'openapi-service': draft.service,
+    'openapi-version': draft.version,
+    'openapi-action': draft.action,
+    'openapi-method': draft.method,
+    'openapi-region': draft.region,
+    'openapi-query': draft.query,
+    'openapi-body': draft.body,
+  }).forEach(([id, value]) => {
+    if (id !== 'openapi-product' && value != null && document.getElementById(id)) setOpenApiValue(id, value);
+  });
+  if (draft.product) syncOpenApiProductCascader(draft.product);
+  log('OpenAPI 草稿已加载', 'success');
+}
+
 // ========== Event Bindings ==========
 document.getElementById('scene-cloud-phone').addEventListener('click', () => setScene('cloud-phone'));
 document.getElementById('scene-enterprise-live').addEventListener('click', () => setScene('enterprise-live'));
+document.getElementById('scene-openapi').addEventListener('click', () => setScene('openapi'));
 document.getElementById('btn-sdk-load').addEventListener('click', () => {
   loadSDK().catch(() => {}); // 错误已在 loadSDK 内部记录
 });
@@ -1705,6 +2376,38 @@ document.getElementById('btn-live-mount').addEventListener('click', () => {
   mountEnterpriseLiveRoom().catch(() => {});
 });
 document.getElementById('btn-live-destroy').addEventListener('click', () => destroyEnterpriseLiveRoom());
+document.getElementById('btn-openapi-sign').addEventListener('click', () => previewOpenApiRequest().catch(() => {}));
+document.getElementById('btn-openapi-send').addEventListener('click', () => sendOpenApiRequest());
+document.getElementById('openapi-platform').addEventListener('change', () => {
+  updateOpenApiProductKindOptions();
+});
+document.getElementById('openapi-product-kind').addEventListener('change', () => {
+  updateOpenApiRegionOptions();
+});
+document.getElementById('openapi-product').addEventListener('change', () => {
+  const product = applyOpenApiProduct();
+  if (product) log(`已选择产品: ${getOpenApiProductLabel(product)} (${product.service}/${product.region})`, 'success');
+});
+document.getElementById('openapi-request-url').addEventListener('change', () => {
+  try {
+    applyOpenApiRequestUrl();
+  } catch (err) {
+    log(`请求地址解析失败: ${err.message || err}`, 'error');
+  }
+});
+document.getElementById('openapi-request-url').addEventListener('input', scheduleOpenApiRequestUrlParse);
+document.getElementById('openapi-request-url').addEventListener('paste', scheduleOpenApiRequestUrlParse);
+document.getElementById('openapi-request-url').addEventListener('keyup', scheduleOpenApiRequestUrlParse);
+document.getElementById('openapi-request-url').addEventListener('cut', scheduleOpenApiRequestUrlParse);
+document.getElementById('openapi-request-url').addEventListener('focus', startOpenApiRequestUrlWatch);
+document.getElementById('openapi-request-url').addEventListener('blur', () => {
+  stopOpenApiRequestUrlWatch();
+  try {
+    applyOpenApiRequestUrl({ log: false });
+  } catch {
+    // 保持现有字段，不在失焦时打断用户。
+  }
+});
 document.getElementById('btn-touch-debug').addEventListener('click', function() {
   const active = this.classList.toggle('active');
   this.style.background = active ? 'var(--primary)' : '';
@@ -2156,6 +2859,8 @@ document.addEventListener('keydown', (e) => {
 
 // ========== Init ==========
 buildUI();
+buildOpenApiProductSelect();
+applyOpenApiRequestUrl({ log: false });
 refreshPresetList();
 updateLiveControls();
 setScene('cloud-phone');
