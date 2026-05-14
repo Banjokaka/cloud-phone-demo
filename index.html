@@ -2296,7 +2296,7 @@ async function sendOpenApiRequest() {
     log(`OpenAPI 返回: HTTP ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
   } catch (err) {
     const corsHint = String(err.message || err).includes('Failed to fetch')
-      ? `\n\n未能访问腾讯云函数代理：${openApiProxyUrl}。请先确认函数已部署、/health 可访问，并且 CORS 已开启。`
+      ? `\n\n未能访问腾讯云函数代理：${openApiProxyUrl}。请先确认函数已部署，并且 CORS 已开启。`
       : '';
     setOpenApiResult(`Error: ${err.message || err}${corsHint}`, 'error');
     log(`OpenAPI 请求失败: ${err.message || err}`, 'error');
