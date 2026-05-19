@@ -73,6 +73,7 @@
   body[data-scene="enterprise-live"] .openapi-only,
   body[data-scene="openapi"] .cloud-only,
   body[data-scene="openapi"] .live-only { display: none !important; }
+  body[data-scene="openapi"] #log-panel { height: 120px; }
 
   /* Layout */
   #main {
@@ -110,6 +111,19 @@
   #sidebar .section {
     background: var(--surface2); border-radius: var(--radius); padding: 10px;
   }
+  body[data-scene="openapi"] #sidebar {
+    padding-bottom: 28px;
+  }
+  body[data-scene="openapi"] #sidebar label {
+    margin-top: 4px;
+  }
+  body[data-scene="openapi"] #sidebar input,
+  body[data-scene="openapi"] #sidebar select {
+    padding: 5px 7px;
+  }
+  body[data-scene="openapi"] #sidebar .section {
+    padding: 8px;
+  }
   #sidebar .section summary {
     font-size: 12px; font-weight: 600; cursor: pointer;
     color: var(--accent); user-select: none;
@@ -135,6 +149,17 @@
     width: 0; overflow: hidden; border-left: none;
   }
   body[data-scene="openapi"] #sidebar { width: 380px; }
+  .openapi-target-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 8px;
+  }
+  .openapi-target-grid label {
+    margin-top: 0 !important;
+  }
+  .openapi-target-grid .full {
+    grid-column: 1 / -1;
+  }
   #openapi-workbench {
     width: min(980px, 100%);
     margin: 0 auto;
@@ -233,9 +258,134 @@
   }
   .openapi-request-preview { max-height: 220px; }
   .openapi-result-output { flex: 1; min-height: 220px; color: var(--text2); }
+  .json-tree {
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.55;
+    white-space: normal;
+    word-break: normal;
+  }
+  .json-tree details {
+    margin-left: 14px;
+  }
+  .json-tree > details {
+    margin-left: 0;
+  }
+  .json-tree summary {
+    cursor: pointer;
+    color: var(--accent);
+    user-select: none;
+    outline: none;
+  }
+  .json-tree .json-row {
+    margin-left: 14px;
+  }
+  .json-tree .json-key {
+    color: #8bd3dd;
+  }
+  .json-tree .json-string {
+    color: #a6e3a1;
+  }
+  .json-tree .json-number {
+    color: #f9c74f;
+  }
+  .json-tree .json-boolean {
+    color: #f38ba8;
+  }
+  .json-tree .json-null {
+    color: var(--text2);
+  }
+  .json-tree .json-empty {
+    color: var(--text2);
+    margin-left: 14px;
+  }
   #openapi-result-panel { padding: 12px; gap: 10px; }
   #openapi-result-panel h3 { font-size: 13px; color: var(--accent); }
   #openapi-result-panel .hint { font-size: 11px; color: var(--text2); line-height: 1.5; }
+  .openapi-result-toolbar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .openapi-result-toolbar button {
+    padding: 5px 9px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 11px;
+  }
+  .openapi-result-toolbar button.active {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+  .body-tree-editor {
+    margin-top: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px;
+    max-height: 360px;
+    overflow: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .body-tree-editor details { margin-left: 14px; padding-top: 4px; }
+  .body-tree-editor > details { margin-left: 0; }
+  .body-tree-editor summary {
+    cursor: pointer;
+    color: var(--accent);
+    user-select: none;
+  }
+  .body-tree-row {
+    display: grid;
+    grid-template-columns: minmax(90px, 170px) minmax(120px, 1fr) auto;
+    gap: 6px;
+    align-items: center;
+    margin: 5px 0 5px 14px;
+  }
+  .body-tree-summary {
+    display: inline-grid;
+    grid-template-columns: minmax(120px, auto) auto auto;
+    gap: 6px;
+    align-items: center;
+  }
+  .body-tree-key { color: #8bd3dd; overflow: hidden; text-overflow: ellipsis; }
+  .body-tree-add-row {
+    display: grid;
+    grid-template-columns: minmax(110px, 1fr) 96px minmax(110px, 1fr) auto;
+    gap: 6px;
+    align-items: center;
+    margin: 8px 0 6px 14px;
+    padding: 6px;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+  }
+  .body-tree-editor .body-tree-array-add-row {
+    grid-template-columns: 96px minmax(110px, 1fr) auto;
+  }
+  .body-tree-editor input, .body-tree-editor select {
+    min-width: 0;
+    padding: 5px 7px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .body-tree-mini-btn {
+    padding: 4px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 10px;
+  }
+  .body-tree-mini-btn:hover { border-color: var(--accent); color: var(--accent); }
   .api-category {
     border-bottom: 1px solid var(--border);
   }
@@ -668,8 +818,6 @@
       <input id="openapi-ak" type="password" value="" placeholder="AK">
       <label>SecretAccessKey</label>
       <input id="openapi-sk" type="password" value="" placeholder="SK">
-      <label>SessionToken</label>
-      <input id="openapi-token" value="" placeholder="STS Token，可选">
       <label>平台</label>
       <select id="openapi-platform"></select>
       <label>产品</label>
@@ -684,21 +832,33 @@
     <details class="section openapi-only" open>
       <summary>请求目标</summary>
       <label>请求地址</label>
-      <input id="openapi-request-url" value="https://open.volcengineapi.com?Action=DetailPod&Version=2025-05-01" placeholder="https://open.volcengineapi.com?Action=DetailPod&Version=2025-05-01">
+      <input id="openapi-request-url" value="" placeholder="https://open.volcengineapi.com?Action=DetailPod&Version=2025-05-01">
       <span class="hint">粘贴火山 OpenAPI 文档里的请求地址，会自动拆出 Endpoint / Action / Version；Service 和 Region 由产品选择自动填充</span>
-      <label>Endpoint</label>
-      <input id="openapi-endpoint" value="https://open.volcengineapi.com/" placeholder="https://open.volcengineapi.com/">
-      <label>Service</label>
-      <input id="openapi-service" value="" placeholder="选择产品后自动填充" readonly>
-      <label>Version</label>
-      <input id="openapi-version" value="2023-01-01" placeholder="API Version">
-      <label>Action</label>
-      <input id="openapi-action" value="" placeholder="OpenAPI Action">
-      <label>Method</label>
-      <select id="openapi-method">
-        <option value="POST">POST</option>
-        <option value="GET">GET</option>
-      </select>
+      <div class="openapi-target-grid">
+        <div class="full">
+          <label>Endpoint</label>
+          <input id="openapi-endpoint" value="" placeholder="https://open.volcengineapi.com/">
+        </div>
+        <div>
+          <label>Service</label>
+          <input id="openapi-service" value="" placeholder="选择产品后自动填充" readonly>
+        </div>
+        <div>
+          <label>Method</label>
+          <select id="openapi-method">
+            <option value="POST">POST</option>
+            <option value="GET">GET</option>
+          </select>
+        </div>
+        <div>
+          <label>Version</label>
+          <input id="openapi-version" value="" placeholder="API Version">
+        </div>
+        <div>
+          <label>Action</label>
+          <input id="openapi-action" value="" placeholder="OpenAPI Action">
+        </div>
+      </div>
     </details>
 
   </div>
@@ -751,10 +911,13 @@
           <button class="primary" type="button" onclick="sendOpenApiRequest()">发送请求</button>
           <button type="button" onclick="previewOpenApiRequest()">生成请求预览</button>
           <button type="button" onclick="copyOpenApiCurl()">复制 cURL</button>
+          <button type="button" onclick="buildBodyTreeFromJson()">从 Body 生成表单</button>
           <button type="button" onclick="saveOpenApiDraft()">保存草稿</button>
           <button type="button" onclick="loadOpenApiDraft()">加载草稿</button>
           <button type="button" onclick="clearOpenApiResult()">清空结果</button>
         </div>
+        <label>Body 参数树</label>
+        <div id="body-tree-editor" class="body-tree-editor">点击「从 Body 生成表单」后，可在这里按层级编辑参数。</div>
         <label>请求预览</label>
         <div id="openapi-preview" class="openapi-request-preview">// 还没有生成请求</div>
       </div>
@@ -795,6 +958,10 @@
   <div id="openapi-result-panel" class="openapi-only">
     <h3>OpenAPI 返回</h3>
     <div class="hint">这里会展示签名信息、HTTP 状态、响应 JSON 和错误摘要。敏感字段会自动脱敏。</div>
+    <div class="openapi-result-toolbar">
+      <button id="openapi-result-view-tree" class="active" type="button">层级视图</button>
+      <button id="openapi-result-view-text" type="button">文本视图</button>
+    </div>
     <div id="openapi-result" class="openapi-result-output">// 等待请求</div>
   </div>
 </div>
@@ -1881,7 +2048,11 @@ const openApiDangerWords = ['Create', 'Update', 'Delete', 'Set', 'Start', 'Stop'
 let openApiRequestUrlParseTimer = null;
 let openApiRequestUrlWatchTimer = null;
 let lastParsedOpenApiRequestUrl = '';
-const openApiProxyUrl = 'http://127.0.0.1:8787/volc-openapi';
+const openApiProxyUrl = 'https://1302048544-3u2mhvy9ln.ap-hongkong.tencentscf.com';
+let openApiResultMode = 'tree';
+let lastOpenApiResult = '// 等待请求';
+let lastOpenApiResultLevel = 'info';
+let bodyTreeData = null;
 const openApiProducts = [
   { id: 'volc-vod-cn-north-1', platform: '火山引擎', product: '视频点播', regionLabel: '华北', service: 'vod', region: 'cn-north-1' },
   { id: 'volc-vod-ap-southeast-1', platform: '火山引擎', product: '视频点播', regionLabel: '亚太东南（柔佛）', service: 'vod', region: 'ap-southeast-1' },
@@ -2021,9 +2192,92 @@ function maskOpenApiSecrets(value) {
 }
 
 function setOpenApiResult(value, level = 'info') {
+  lastOpenApiResult = value;
+  lastOpenApiResultLevel = level;
+  renderOpenApiResult();
+}
+
+function renderOpenApiResult() {
   const el = document.getElementById('openapi-result');
-  el.textContent = maskOpenApiSecrets(value);
-  el.style.color = level === 'error' ? 'var(--error)' : (level === 'success' ? 'var(--success)' : 'var(--text2)');
+  if (!el) return;
+  el.textContent = '';
+  el.style.color = lastOpenApiResultLevel === 'error' ? 'var(--error)' : (lastOpenApiResultLevel === 'success' ? 'var(--success)' : 'var(--text2)');
+  const masked = maskOpenApiValue(lastOpenApiResult);
+  if (openApiResultMode === 'tree' && masked && typeof masked === 'object') {
+    el.appendChild(renderJsonTree(masked));
+  } else {
+    el.textContent = typeof masked === 'string' ? masked : JSON.stringify(masked, null, 2);
+  }
+}
+
+function setOpenApiResultMode(mode) {
+  openApiResultMode = mode;
+  document.getElementById('openapi-result-view-tree')?.classList.toggle('active', mode === 'tree');
+  document.getElementById('openapi-result-view-text')?.classList.toggle('active', mode === 'text');
+  renderOpenApiResult();
+}
+
+function maskOpenApiValue(value, key = '') {
+  const sensitiveKeys = ['secretaccesskey', 'secretkey', 'accesskeysecret', 'authorization', 'x-security-token', 'sessiontoken', 'token'];
+  if (value == null) return value;
+  if (sensitiveKeys.includes(String(key).toLowerCase())) return '***';
+  if (Array.isArray(value)) return value.map(item => maskOpenApiValue(item));
+  if (typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([childKey, childValue]) => [childKey, maskOpenApiValue(childValue, childKey)]));
+  }
+  if (typeof value === 'string') {
+    return value
+      .replace(/(Credential=)[^,\s]+/g, '$1***')
+      .replace(/(Signature=)[a-f0-9]+/gi, '$1***')
+      .replace(/(Bearer\s+)[A-Za-z0-9._-]+/g, '$1***');
+  }
+  return value;
+}
+
+function renderJsonTree(value, key = 'root') {
+  const container = document.createElement('div');
+  container.className = 'json-tree';
+  container.appendChild(renderJsonNode(value, key, true));
+  return container;
+}
+
+function renderJsonNode(value, key, isRoot = false) {
+  if (value && typeof value === 'object') {
+    const isArray = Array.isArray(value);
+    const entries = isArray ? value.map((item, index) => [index, item]) : Object.entries(value);
+    const details = document.createElement('details');
+    details.open = isRoot || entries.length <= 8;
+
+    const summary = document.createElement('summary');
+    const label = isRoot ? '' : `${key}: `;
+    summary.textContent = `${label}${isArray ? '[' : '{'}${entries.length} ${isArray ? 'items' : 'keys'}${isArray ? ']' : '}'}`;
+    details.appendChild(summary);
+
+    if (entries.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'json-empty';
+      empty.textContent = isArray ? '[]' : '{}';
+      details.appendChild(empty);
+      return details;
+    }
+
+    entries.forEach(([childKey, childValue]) => {
+      details.appendChild(renderJsonNode(childValue, childKey));
+    });
+    return details;
+  }
+
+  const row = document.createElement('div');
+  row.className = 'json-row';
+  const keyEl = document.createElement('span');
+  keyEl.className = 'json-key';
+  keyEl.textContent = `${key}: `;
+  const valueEl = document.createElement('span');
+  const type = value === null ? 'null' : typeof value;
+  valueEl.className = `json-${type}`;
+  valueEl.textContent = type === 'string' ? `"${value}"` : String(value);
+  row.append(keyEl, valueEl);
+  return row;
 }
 
 function parseOpenApiJson(id, fallback, label) {
@@ -2051,6 +2305,194 @@ function parseOpenApiJson(id, fallback, label) {
     throw new Error(`${label} 需要是 JSON 对象`);
   }
   return parsed;
+}
+
+function buildBodyTreeFromJson() {
+  try {
+    bodyTreeData = parseOpenApiJson('openapi-body', {}, 'Body JSON');
+    renderBodyTreeEditor();
+    log('已从 Body JSON 生成参数树', 'success');
+  } catch (err) {
+    log(`生成参数树失败: ${err.message || err}`, 'error');
+  }
+}
+
+function syncBodyJsonFromTree() {
+  setOpenApiValue('openapi-body', JSON.stringify(bodyTreeData ?? {}, null, 2));
+}
+
+function getBodyTreeNode(path) {
+  return path.reduce((node, key) => node?.[key], bodyTreeData);
+}
+
+function setBodyTreeNode(path, value) {
+  if (path.length === 0) {
+    bodyTreeData = value;
+    return;
+  }
+  const parent = getBodyTreeNode(path.slice(0, -1));
+  parent[path[path.length - 1]] = value;
+}
+
+function deleteBodyTreeNode(path) {
+  if (path.length === 0) {
+    bodyTreeData = {};
+    return;
+  }
+  const parent = getBodyTreeNode(path.slice(0, -1));
+  if (Array.isArray(parent)) parent.splice(Number(path[path.length - 1]), 1);
+  else delete parent[path[path.length - 1]];
+}
+
+function parseBodyTreeValue(raw, type) {
+  if (type === 'string') return raw;
+  if (type === 'number') return Number(raw || 0);
+  if (type === 'boolean') return raw === 'true';
+  if (type === 'null') return null;
+  try {
+    return JSON.parse(raw || (type === 'array' ? '[]' : '{}'));
+  } catch {
+    return type === 'array' ? [] : {};
+  }
+}
+
+function getDefaultBodyTreeValue(type, raw = '') {
+  if (type === 'object') return {};
+  if (type === 'array') return [];
+  return parseBodyTreeValue(raw, type);
+}
+
+function renderBodyTreeEditor() {
+  const root = document.getElementById('body-tree-editor');
+  if (!root) return;
+  root.textContent = '';
+  root.appendChild(renderBodyTreeNode(bodyTreeData ?? {}, []));
+  syncBodyJsonFromTree();
+}
+
+function renderBodyTreeNode(value, path) {
+  if (value && typeof value === 'object') {
+    const isArray = Array.isArray(value);
+    const entries = isArray ? value.map((item, index) => [index, item]) : Object.entries(value);
+    const details = document.createElement('details');
+    details.open = path.length <= 1;
+
+    const summary = document.createElement('summary');
+    const summaryInner = document.createElement('span');
+    summaryInner.className = 'body-tree-summary';
+    const name = path.length ? path[path.length - 1] : 'Body';
+    const title = document.createElement('span');
+    title.textContent = `${name} ${isArray ? '[' : '{'}${entries.length}${isArray ? ']' : '}'}`;
+    summaryInner.appendChild(title);
+    if (path.length > 0) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'body-tree-mini-btn';
+      delBtn.type = 'button';
+      delBtn.textContent = '删除';
+      delBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        deleteBodyTreeNode(path);
+        renderBodyTreeEditor();
+      });
+      summaryInner.appendChild(delBtn);
+    }
+    summary.appendChild(summaryInner);
+    details.appendChild(summary);
+
+    details.appendChild(renderBodyTreeAddRow(value, path, isArray));
+    entries.forEach(([childKey, childValue]) => details.appendChild(renderBodyTreeNode(childValue, [...path, childKey])));
+    return details;
+  }
+
+  const row = document.createElement('div');
+  row.className = 'body-tree-row';
+  const keyEl = document.createElement('div');
+  keyEl.className = 'body-tree-key';
+  keyEl.textContent = String(path[path.length - 1] ?? 'value');
+
+  const type = value === null ? 'null' : typeof value;
+  const editorWrap = document.createElement('div');
+  editorWrap.style.display = 'grid';
+  editorWrap.style.gridTemplateColumns = '90px minmax(0, 1fr)';
+  editorWrap.style.gap = '6px';
+  const typeSelect = document.createElement('select');
+  ['string', 'number', 'boolean', 'null', 'object', 'array'].forEach(item => {
+    const option = document.createElement('option');
+    option.value = item;
+    option.textContent = item;
+    if (item === type) option.selected = true;
+    typeSelect.appendChild(option);
+  });
+  const input = document.createElement('input');
+  input.value = value == null ? '' : String(value);
+  input.disabled = type === 'null';
+  input.addEventListener('input', () => {
+    setBodyTreeNode(path, parseBodyTreeValue(input.value, typeSelect.value));
+    syncBodyJsonFromTree();
+  });
+  typeSelect.addEventListener('change', () => {
+    setBodyTreeNode(path, parseBodyTreeValue(input.value, typeSelect.value));
+    renderBodyTreeEditor();
+  });
+  editorWrap.append(typeSelect, input);
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'body-tree-mini-btn';
+  delBtn.type = 'button';
+  delBtn.textContent = '删除';
+  delBtn.addEventListener('click', () => {
+    deleteBodyTreeNode(path);
+    renderBodyTreeEditor();
+  });
+  row.append(keyEl, editorWrap, delBtn);
+  return row;
+}
+
+function renderBodyTreeAddRow(target, path, isArray) {
+  const row = document.createElement('div');
+  row.className = `body-tree-add-row${isArray ? ' body-tree-array-add-row' : ''}`;
+
+  const keyInput = document.createElement('input');
+  keyInput.placeholder = '字段名';
+  if (isArray) keyInput.style.display = 'none';
+
+  const typeSelect = document.createElement('select');
+  ['string', 'number', 'boolean', 'object', 'array', 'null'].forEach(type => {
+    const option = document.createElement('option');
+    option.value = type;
+    option.textContent = type;
+    typeSelect.appendChild(option);
+  });
+
+  const valueInput = document.createElement('input');
+  valueInput.placeholder = '默认值';
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'body-tree-mini-btn';
+  addBtn.type = 'button';
+  addBtn.textContent = isArray ? '新增项' : '新增字段';
+  addBtn.addEventListener('click', () => {
+    const type = typeSelect.value;
+    const nextValue = getDefaultBodyTreeValue(type, valueInput.value);
+    if (isArray) {
+      target.push(nextValue);
+    } else {
+      const key = keyInput.value.trim();
+      if (!key) {
+        keyInput.focus();
+        return;
+      }
+      target[key] = nextValue;
+      keyInput.value = '';
+    }
+    valueInput.value = '';
+    renderBodyTreeEditor();
+  });
+
+  if (!isArray) row.appendChild(keyInput);
+  row.append(typeSelect, valueInput, addBtn);
+  return row;
 }
 
 function applyOpenApiRequestUrl(options = {}) {
@@ -2161,7 +2603,8 @@ function toVolcDate(date = new Date()) {
 function getOpenApiConfig() {
   applyOpenApiRequestUrl({ log: false });
   applyOpenApiProduct();
-  const endpoint = getOpenApiValue('openapi-endpoint') || 'https://open.volcengineapi.com/';
+  const endpoint = getOpenApiValue('openapi-endpoint');
+  if (!endpoint) throw new Error('请先填写请求地址，或手动填写 Endpoint');
   const endpointUrl = new URL(endpoint);
   const action = getOpenApiValue('openapi-action');
   const version = getOpenApiValue('openapi-version');
@@ -2173,7 +2616,6 @@ function getOpenApiConfig() {
   return {
     ak: getOpenApiValue('openapi-ak'),
     sk: getOpenApiValue('openapi-sk'),
-    token: getOpenApiValue('openapi-token'),
     region: getOpenApiValue('openapi-region') || 'cn-north-1',
     service: getOpenApiValue('openapi-service'),
     method,
@@ -2197,12 +2639,11 @@ async function signOpenApiRequest() {
   const queryString = canonicalOpenApiQuery(cfg.query);
   const bodyText = cfg.method === 'GET' ? '' : JSON.stringify(cfg.body || {});
   const payloadHash = await sha256Hex(bodyText);
-  const signedHeaders = cfg.token ? 'content-type;host;x-date;x-security-token' : 'content-type;host;x-date';
+  const signedHeaders = 'content-type;host;x-date';
   const canonicalHeaders = [
     'content-type:application/json',
     `host:${cfg.endpointUrl.host}`,
     `x-date:${now}`,
-    cfg.token ? `x-security-token:${cfg.token}` : null,
   ].filter(Boolean).join('\n') + '\n';
   const canonicalRequest = [
     cfg.method,
@@ -2230,7 +2671,6 @@ async function signOpenApiRequest() {
     'X-Date': now,
     Authorization: authorization,
   };
-  if (cfg.token) headers['X-Security-Token'] = cfg.token;
   const url = `${cfg.endpointUrl.origin}${pathname}?${queryString}`;
   return {
     url,
@@ -2296,7 +2736,7 @@ async function sendOpenApiRequest() {
     log(`OpenAPI 返回: HTTP ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
   } catch (err) {
     const corsHint = String(err.message || err).includes('Failed to fetch')
-      ? `\n\n未能访问本地 OpenAPI 代理：${openApiProxyUrl}。请先启动本地代理后再发送请求。`
+      ? `\n\n未能访问腾讯云函数代理：${openApiProxyUrl}。请确认函数 URL 可访问，并且 CORS 已开启。`
       : '';
     setOpenApiResult(`Error: ${err.message || err}${corsHint}`, 'error');
     log(`OpenAPI 请求失败: ${err.message || err}`, 'error');
@@ -2384,6 +2824,8 @@ document.getElementById('btn-live-mount').addEventListener('click', () => {
 document.getElementById('btn-live-destroy').addEventListener('click', () => destroyEnterpriseLiveRoom());
 document.getElementById('btn-openapi-sign').addEventListener('click', () => previewOpenApiRequest().catch(() => {}));
 document.getElementById('btn-openapi-send').addEventListener('click', () => sendOpenApiRequest());
+document.getElementById('openapi-result-view-tree').addEventListener('click', () => setOpenApiResultMode('tree'));
+document.getElementById('openapi-result-view-text').addEventListener('click', () => setOpenApiResultMode('text'));
 document.getElementById('openapi-platform').addEventListener('change', () => {
   updateOpenApiProductKindOptions();
 });

@@ -2,11 +2,6 @@ import http from 'node:http';
 
 const port = Number(process.env.PORT || 8787);
 const allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://127.0.0.1:4173';
-const allowedHosts = new Set([
-  'open.volcengineapi.com',
-  'open.byteplusapi.com',
-]);
-
 function writeCors(res) {
   res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -44,7 +39,7 @@ function sendJson(res, statusCode, payload) {
 function isAllowedUrl(rawUrl) {
   try {
     const url = new URL(rawUrl);
-    return url.protocol === 'https:' && allowedHosts.has(url.hostname);
+    return url.protocol === 'https:';
   } catch {
     return false;
   }
@@ -74,8 +69,7 @@ const server = http.createServer(async (req, res) => {
 
     if (!isAllowedUrl(url)) {
       sendJson(res, 400, {
-        error: 'Only Volcengine OpenAPI HTTPS endpoints are allowed',
-        allowedHosts: [...allowedHosts],
+        error: 'Only HTTPS endpoints are allowed',
       });
       return;
     }
