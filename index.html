@@ -124,6 +124,10 @@
   body[data-scene="openapi"] #sidebar select {
     padding: 5px 7px;
   }
+  .secret-text {
+    -webkit-text-security: disc;
+    text-security: disc;
+  }
   body[data-scene="openapi"] #sidebar .section {
     padding: 8px;
   }
@@ -841,10 +845,6 @@
 
     <div class="section openapi-only">
       <h3>OpenAPI 鉴权</h3>
-      <label>AccessKeyID</label>
-      <input id="openapi-ak" type="password" value="" placeholder="AK">
-      <label>SecretAccessKey</label>
-      <input id="openapi-sk" type="password" value="" placeholder="SK">
       <label>平台</label>
       <select id="openapi-platform"></select>
       <label>产品</label>
@@ -853,7 +853,19 @@
       <select id="openapi-product"></select>
       <label>Region</label>
       <input id="openapi-region" value="" placeholder="选择产品后自动填充" readonly>
-      <span class="hint">密钥只保存在当前浏览器页面中。建议使用临时 AK/SK。</span>
+      <label>已保存 AK/SK</label>
+      <select id="openapi-credential-profile"></select>
+      <label>保存名称</label>
+      <input id="openapi-credential-name" value="" placeholder="例如：客户A / 测试环境" autocomplete="off">
+      <label>AccessKeyID</label>
+      <input id="openapi-ak" class="secret-text" type="text" value="" placeholder="AK" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
+      <label>SecretAccessKey</label>
+      <input id="openapi-sk" class="secret-text" type="text" value="" placeholder="SK" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button id="btn-openapi-save-credentials" type="button" style="flex:1;font-size:11px">保存 AK/SK</button>
+        <button id="btn-openapi-delete-credentials" type="button" style="font-size:11px">删除</button>
+      </div>
+      <span class="hint">AK/SK 只临时保存在当前页面会话中，关闭页面后清除；保存名称用于区分同一产品下的多组密钥。</span>
     </div>
 
     <details class="section openapi-only" open>
@@ -923,27 +935,25 @@
     <div id="openapi-workbench" class="openapi-only">
       <div class="openapi-box openapi-section">
         <h3>参数与请求体</h3>
-        <div class="openapi-grid">
-          <div>
-            <label>Query 参数 JSON</label>
-            <textarea id="openapi-query" placeholder='{ "Action": "...", "Version": "..." }'></textarea>
-          </div>
-          <div>
-            <label>Body JSON</label>
-            <textarea id="openapi-body" placeholder='{ }'>{}</textarea>
-          </div>
-        </div>
+        <label>业务参数 JSON</label>
+        <textarea id="openapi-body" placeholder='{ }'>{}</textarea>
+        <span class="hint">一般把文档里的接口参数填在这里；GET 会自动放到 URL 参数，POST 会自动放到请求体。Action 和 Version 会从请求地址中解析。</span>
+        <details class="openapi-preview-details">
+          <summary>高级参数</summary>
+          <label>Query 参数 JSON</label>
+          <textarea id="openapi-query" placeholder='{ "Action": "...", "Version": "..." }'></textarea>
+        </details>
         <div class="openapi-actions">
           <button class="primary" type="button" onclick="sendOpenApiRequest()">发送请求</button>
           <button type="button" onclick="previewOpenApiRequest({ show: true })">生成请求预览</button>
           <button type="button" onclick="copyOpenApiCurl()">复制 cURL</button>
-          <button type="button" onclick="buildBodyTreeFromJson()">从 Body 生成表单</button>
+          <button type="button" onclick="buildBodyTreeFromJson()">从业务参数生成表单</button>
           <button type="button" onclick="saveOpenApiDraft()">保存草稿</button>
           <button type="button" onclick="loadOpenApiDraft()">加载草稿</button>
           <button type="button" onclick="clearOpenApiResult()">清空结果</button>
         </div>
-        <label>Body 参数树</label>
-        <div id="body-tree-editor" class="body-tree-editor">点击「从 Body 生成表单」后，可在这里按层级编辑参数。</div>
+        <label>业务参数树</label>
+        <div id="body-tree-editor" class="body-tree-editor">点击「从业务参数生成表单」后，可在这里按层级编辑参数。</div>
         <details id="openapi-preview-details" class="openapi-preview-details">
           <summary>请求预览</summary>
           <div id="openapi-preview" class="openapi-request-preview">// 还没有生成请求</div>
@@ -2082,6 +2092,7 @@ let openApiResultMode = 'tree';
 let lastOpenApiResult = '// 等待请求';
 let lastOpenApiResultLevel = 'info';
 let bodyTreeData = null;
+const openApiCredentialSessionKey = 'volc-openapi-session-credentials';
 const openApiProducts = [
   { id: 'volc-vod-cn-north-1', platform: '火山引擎', product: '视频点播', regionLabel: '华北', service: 'vod', region: 'cn-north-1' },
   { id: 'volc-vod-ap-southeast-1', platform: '火山引擎', product: '视频点播', regionLabel: '亚太东南（柔佛）', service: 'vod', region: 'ap-southeast-1' },
@@ -2113,6 +2124,147 @@ function getSelectedOpenApiProduct() {
 
 function getOpenApiProductLabel(product) {
   return `${product.platform}-${product.product} / ${product.regionLabel}`;
+}
+
+function getOpenApiCredentialScope() {
+  const product = getSelectedOpenApiProduct();
+  const platform = product?.platform || getOpenApiValue('openapi-platform');
+  const productKind = product?.product || getOpenApiValue('openapi-product-kind');
+  if (!platform || !productKind) return '';
+  return `${platform}::${productKind}`;
+}
+
+function getOpenApiCredentialStore() {
+  try {
+    return JSON.parse(sessionStorage.getItem(openApiCredentialSessionKey) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function getOpenApiCredentialBucket(store, scope) {
+  const bucket = store[scope] || {};
+  if (bucket.ak || bucket.sk) {
+    return {
+      profiles: {
+        默认: {
+          ak: bucket.ak || '',
+          sk: bucket.sk || '',
+          updatedAt: bucket.updatedAt || Date.now(),
+        },
+      },
+      activeName: '默认',
+    };
+  }
+  return {
+    profiles: bucket.profiles || {},
+    activeName: bucket.activeName || '',
+  };
+}
+
+function getOpenApiSelectedCredentialName() {
+  return getOpenApiValue('openapi-credential-profile');
+}
+
+function setOpenApiCredentialFields(credentials = null, name = '') {
+  setOpenApiValue('openapi-ak', credentials?.ak || '');
+  setOpenApiValue('openapi-sk', credentials?.sk || '');
+  setOpenApiValue('openapi-credential-name', name || '');
+}
+
+function refreshOpenApiCredentialProfiles(selectedName = '') {
+  const select = document.getElementById('openapi-credential-profile');
+  if (!select) return;
+  const scope = getOpenApiCredentialScope();
+  const store = getOpenApiCredentialStore();
+  const bucket = scope ? getOpenApiCredentialBucket(store, scope) : { profiles: {}, activeName: '' };
+  const names = Object.keys(bucket.profiles);
+  setSelectOptions(
+    select,
+    names.map(name => ({ value: name, label: name })),
+    names.length ? '选择已保存 AK/SK' : '暂无已保存 AK/SK'
+  );
+  const nextName = selectedName || bucket.activeName || '';
+  if (nextName && bucket.profiles[nextName]) {
+    setOpenApiValue('openapi-credential-profile', nextName);
+  }
+}
+
+function saveOpenApiSessionCredentials(options = {}) {
+  const scope = getOpenApiCredentialScope();
+  if (!scope) {
+    if (options.notify) log('请先选择平台和产品，再保存 AK/SK', 'warn');
+    return;
+  }
+  const ak = getOpenApiValue('openapi-ak');
+  const sk = getOpenApiValue('openapi-sk');
+  const name = getOpenApiValue('openapi-credential-name') || getOpenApiSelectedCredentialName();
+  if (!name) {
+    if (options.notify) log('请先填写保存名称，用来区分同一产品下的多组 AK/SK', 'warn');
+    return;
+  }
+  if (!ak || !sk) {
+    if (options.notify) log('请先填写完整 AK/SK 再保存', 'warn');
+    return;
+  }
+  const store = getOpenApiCredentialStore();
+  const bucket = getOpenApiCredentialBucket(store, scope);
+  bucket.profiles[name] = { ak, sk, updatedAt: Date.now() };
+  bucket.activeName = name;
+  store[scope] = bucket;
+  sessionStorage.setItem(openApiCredentialSessionKey, JSON.stringify(store));
+  refreshOpenApiCredentialProfiles(name);
+  if (options.notify) log(`AK/SK「${name}」已临时保存，关闭页面后会清除`, 'success');
+}
+
+function restoreOpenApiSessionCredentials() {
+  const scope = getOpenApiCredentialScope();
+  if (!scope) {
+    refreshOpenApiCredentialProfiles();
+    setOpenApiCredentialFields();
+    return;
+  }
+  const bucket = getOpenApiCredentialBucket(getOpenApiCredentialStore(), scope);
+  const name = bucket.activeName || '';
+  refreshOpenApiCredentialProfiles(name);
+  setOpenApiCredentialFields(bucket.profiles[name], name);
+}
+
+function applyOpenApiCredentialProfile(name = getOpenApiSelectedCredentialName()) {
+  const scope = getOpenApiCredentialScope();
+  if (!scope || !name) {
+    setOpenApiCredentialFields();
+    return;
+  }
+  const bucket = getOpenApiCredentialBucket(getOpenApiCredentialStore(), scope);
+  setOpenApiCredentialFields(bucket.profiles[name], name);
+  const store = getOpenApiCredentialStore();
+  store[scope] = { ...bucket, activeName: name };
+  sessionStorage.setItem(openApiCredentialSessionKey, JSON.stringify(store));
+}
+
+function deleteOpenApiSessionCredentials() {
+  const scope = getOpenApiCredentialScope();
+  const name = getOpenApiSelectedCredentialName() || getOpenApiValue('openapi-credential-name');
+  if (!scope || !name) {
+    log('请先选择要删除的 AK/SK', 'warn');
+    return;
+  }
+  const store = getOpenApiCredentialStore();
+  const bucket = getOpenApiCredentialBucket(store, scope);
+  if (!bucket.profiles[name]) {
+    log('没有找到要删除的 AK/SK', 'warn');
+    return;
+  }
+  delete bucket.profiles[name];
+  const names = Object.keys(bucket.profiles);
+  bucket.activeName = names[0] || '';
+  if (names.length) store[scope] = bucket;
+  else delete store[scope];
+  sessionStorage.setItem(openApiCredentialSessionKey, JSON.stringify(store));
+  refreshOpenApiCredentialProfiles(bucket.activeName);
+  setOpenApiCredentialFields(bucket.profiles[bucket.activeName], bucket.activeName);
+  log(`AK/SK「${name}」已删除`, 'info');
 }
 
 function applyOpenApiProduct(productId = getOpenApiValue('openapi-product')) {
@@ -2187,6 +2339,7 @@ function updateOpenApiRegionOptions(
   if (nextProductId) {
     setOpenApiValue('openapi-product', nextProductId);
     applyOpenApiProduct(nextProductId);
+    restoreOpenApiSessionCredentials();
   } else {
     applyOpenApiProduct('');
   }
@@ -2338,9 +2491,9 @@ function parseOpenApiJson(id, fallback, label) {
 
 function buildBodyTreeFromJson() {
   try {
-    bodyTreeData = parseOpenApiJson('openapi-body', {}, 'Body JSON');
+    bodyTreeData = parseOpenApiJson('openapi-body', {}, '业务参数 JSON');
     renderBodyTreeEditor();
-    log('已从 Body JSON 生成参数树', 'success');
+    log('已从业务参数 JSON 生成参数树', 'success');
   } catch (err) {
     log(`生成参数树失败: ${err.message || err}`, 'error');
   }
@@ -2409,7 +2562,7 @@ function renderBodyTreeNode(value, path) {
     const summary = document.createElement('summary');
     const summaryInner = document.createElement('span');
     summaryInner.className = 'body-tree-summary';
-    const name = path.length ? path[path.length - 1] : 'Body';
+    const name = path.length ? path[path.length - 1] : '业务参数';
     const title = document.createElement('span');
     title.textContent = `${name} ${isArray ? '[' : '{'}${entries.length}${isArray ? ']' : '}'}`;
     summaryInner.appendChild(title);
@@ -2638,8 +2791,11 @@ function getOpenApiConfig() {
   const action = getOpenApiValue('openapi-action');
   const version = getOpenApiValue('openapi-version');
   const method = getOpenApiValue('openapi-method') || 'POST';
-  const query = parseOpenApiJson('openapi-query', {}, 'Query 参数 JSON');
-  const body = parseOpenApiJson('openapi-body', {}, 'Body JSON');
+  const advancedQuery = parseOpenApiJson('openapi-query', {}, 'Query 参数 JSON');
+  const businessParams = parseOpenApiJson('openapi-body', {}, '业务参数 JSON');
+  const isGet = method.toUpperCase() === 'GET';
+  const query = isGet ? { ...businessParams, ...advancedQuery } : { ...advancedQuery };
+  const body = isGet ? {} : businessParams;
   if (action) query.Action = action;
   if (version) query.Version = version;
   return {
@@ -2864,13 +3020,25 @@ document.getElementById('openapi-result-view-tree').addEventListener('click', ()
 document.getElementById('openapi-result-view-text').addEventListener('click', () => setOpenApiResultMode('text'));
 document.getElementById('openapi-platform').addEventListener('change', () => {
   updateOpenApiProductKindOptions();
+  restoreOpenApiSessionCredentials();
 });
 document.getElementById('openapi-product-kind').addEventListener('change', () => {
   updateOpenApiRegionOptions();
+  restoreOpenApiSessionCredentials();
 });
 document.getElementById('openapi-product').addEventListener('change', () => {
   const product = applyOpenApiProduct();
+  restoreOpenApiSessionCredentials();
   if (product) log(`已选择产品: ${getOpenApiProductLabel(product)} (${product.service}/${product.region})`, 'success');
+});
+document.getElementById('openapi-credential-profile').addEventListener('change', () => {
+  applyOpenApiCredentialProfile();
+});
+document.getElementById('btn-openapi-save-credentials').addEventListener('click', () => {
+  saveOpenApiSessionCredentials({ notify: true });
+});
+document.getElementById('btn-openapi-delete-credentials').addEventListener('click', () => {
+  deleteOpenApiSessionCredentials();
 });
 document.getElementById('openapi-request-url').addEventListener('change', () => {
   try {
@@ -3348,6 +3516,7 @@ document.addEventListener('keydown', (e) => {
 // ========== Init ==========
 buildUI();
 buildOpenApiProductSelect();
+refreshOpenApiCredentialProfiles();
 applyOpenApiRequestUrl({ log: false });
 refreshPresetList();
 updateLiveControls();
