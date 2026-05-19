@@ -704,8 +704,6 @@
   <button id="btn-live-load" class="live-only">加载 Web 观播 SDK</button>
   <button id="btn-live-mount" class="live-only" disabled>进入直播间</button>
   <button id="btn-live-destroy" class="danger live-only" disabled>销毁直播间</button>
-  <button id="btn-openapi-sign" class="openapi-only">生成签名</button>
-  <button id="btn-openapi-send" class="openapi-only">发送请求</button>
   <span class="cloud-only" style="color:var(--border);margin:0 4px">|</span>
   <button id="btn-touch-debug" class="cloud-only" style="font-size:var(--fs-control)">触控调试</button>
   <button id="btn-stats-poll" class="cloud-only" style="font-size:var(--fs-control)">实时状态</button>
@@ -3046,8 +3044,6 @@ document.getElementById('btn-live-mount').addEventListener('click', () => {
   mountEnterpriseLiveRoom().catch(() => {});
 });
 document.getElementById('btn-live-destroy').addEventListener('click', () => destroyEnterpriseLiveRoom());
-document.getElementById('btn-openapi-sign').addEventListener('click', () => previewOpenApiRequest({ show: true }).catch(() => {}));
-document.getElementById('btn-openapi-send').addEventListener('click', () => sendOpenApiRequest());
 document.getElementById('openapi-result-view-tree').addEventListener('click', () => setOpenApiResultMode('tree'));
 document.getElementById('openapi-result-view-text').addEventListener('click', () => setOpenApiResultMode('text'));
 document.getElementById('openapi-platform').addEventListener('change', () => {
