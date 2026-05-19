@@ -73,7 +73,10 @@
   body[data-scene="enterprise-live"] .openapi-only,
   body[data-scene="openapi"] .cloud-only,
   body[data-scene="openapi"] .live-only { display: none !important; }
-  body[data-scene="openapi"] #log-panel { height: 120px; }
+  body[data-scene="openapi"] #log-panel { height: 34px; }
+  body[data-scene="openapi"] #log-output { display: none; }
+  body[data-scene="openapi"].log-expanded #log-panel { height: 180px; }
+  body[data-scene="openapi"].log-expanded #log-output { display: block; }
 
   /* Layout */
   #main {
@@ -135,10 +138,15 @@
     min-width: 0; padding: 12px; justify-content: center;
     background: var(--bg);
   }
+  body[data-scene="openapi"] #center-panel {
+    justify-content: flex-start;
+    overflow-y: auto;
+    padding: 12px 18px 24px;
+  }
   /* 不干预 SDK 内部的元素定位，否则会破坏触控事件层 */
 
   /* Right API Panel — 竖向排列 */
-  #api-panel, #live-api-panel, #openapi-result-panel {
+  #api-panel, #live-api-panel {
     width: 360px; flex-shrink: 0;
     background: var(--surface);
     border-left: 1px solid var(--border);
@@ -161,12 +169,9 @@
     grid-column: 1 / -1;
   }
   #openapi-workbench {
-    width: min(980px, 100%);
+    width: min(1180px, 100%);
     margin: 0 auto;
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: 12px;
-    min-height: 0;
+    display: block;
   }
   .openapi-hero {
     display: grid;
@@ -257,7 +262,20 @@
     overflow: auto;
   }
   .openapi-request-preview { max-height: 220px; }
-  .openapi-result-output { flex: 1; min-height: 220px; color: var(--text2); }
+  .openapi-preview-details {
+    margin-top: 10px;
+  }
+  .openapi-preview-details summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    user-select: none;
+  }
+  .openapi-preview-details .openapi-request-preview {
+    margin-top: 6px;
+  }
+  .openapi-result-output { min-height: 420px; max-height: 70vh; color: var(--text2); }
   .json-tree {
     font-family: var(--mono);
     font-size: 11px;
@@ -302,6 +320,9 @@
   #openapi-result-panel { padding: 12px; gap: 10px; }
   #openapi-result-panel h3 { font-size: 13px; color: var(--accent); }
   #openapi-result-panel .hint { font-size: 11px; color: var(--text2); line-height: 1.5; }
+  .openapi-result-section {
+    margin-top: 12px;
+  }
   .openapi-result-toolbar {
     display: flex;
     gap: 6px;
@@ -455,6 +476,13 @@
   #log-header button { font-size: 10px; padding: 3px 10px; border-radius: 4px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); cursor: pointer; }
   #log-header button:hover { background: var(--primary); }
   #log-header label { font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  body[data-scene="openapi"] #log-header {
+    padding: 5px 12px;
+  }
+  body[data-scene="openapi"] #log-header label,
+  body[data-scene="openapi"] #btn-export-log {
+    display: none;
+  }
   #log-output {
     flex: 1; overflow-y: auto; padding: 6px 12px;
     font-family: var(--mono); font-size: 11px;
@@ -613,7 +641,6 @@
     #bytelive-layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 180px; }
     #bytelive-menu { border-left: 0; border-top: 1px solid var(--border); }
     .openapi-hero, .openapi-grid { grid-template-columns: 1fr; }
-    #openapi-result-panel { width: 100% !important; max-height: 42vh; }
   }
 </style>
 </head>
@@ -909,7 +936,7 @@
         <div class="openapi-actions">
           <button type="button" onclick="applyOpenApiRequestUrl()">解析请求地址</button>
           <button class="primary" type="button" onclick="sendOpenApiRequest()">发送请求</button>
-          <button type="button" onclick="previewOpenApiRequest()">生成请求预览</button>
+          <button type="button" onclick="previewOpenApiRequest({ show: true })">生成请求预览</button>
           <button type="button" onclick="copyOpenApiCurl()">复制 cURL</button>
           <button type="button" onclick="buildBodyTreeFromJson()">从 Body 生成表单</button>
           <button type="button" onclick="saveOpenApiDraft()">保存草稿</button>
@@ -918,8 +945,19 @@
         </div>
         <label>Body 参数树</label>
         <div id="body-tree-editor" class="body-tree-editor">点击「从 Body 生成表单」后，可在这里按层级编辑参数。</div>
-        <label>请求预览</label>
-        <div id="openapi-preview" class="openapi-request-preview">// 还没有生成请求</div>
+        <details id="openapi-preview-details" class="openapi-preview-details">
+          <summary>请求预览</summary>
+          <div id="openapi-preview" class="openapi-request-preview">// 还没有生成请求</div>
+        </details>
+        <div id="openapi-result-panel" class="openapi-result-section">
+          <h3>OpenAPI 返回</h3>
+          <div class="hint">这里会展示 HTTP 状态、响应 JSON 和错误摘要。敏感字段会自动脱敏。</div>
+          <div class="openapi-result-toolbar">
+            <button id="openapi-result-view-tree" class="active" type="button">层级视图</button>
+            <button id="openapi-result-view-text" type="button">文本视图</button>
+          </div>
+          <div id="openapi-result" class="openapi-result-output">// 等待请求</div>
+        </div>
       </div>
     </div>
   </div>
@@ -955,15 +993,6 @@
       </div>
     </div>
   </div>
-  <div id="openapi-result-panel" class="openapi-only">
-    <h3>OpenAPI 返回</h3>
-    <div class="hint">这里会展示签名信息、HTTP 状态、响应 JSON 和错误摘要。敏感字段会自动脱敏。</div>
-    <div class="openapi-result-toolbar">
-      <button id="openapi-result-view-tree" class="active" type="button">层级视图</button>
-      <button id="openapi-result-view-text" type="button">文本视图</button>
-    </div>
-    <div id="openapi-result" class="openapi-result-output">// 等待请求</div>
-  </div>
 </div>
 
 <!-- Bottom Log -->
@@ -974,6 +1003,7 @@
     <label><input type="checkbox" id="log-event" checked> Event</label>
     <label><input type="checkbox" id="log-success" checked> Success</label>
     <label><input type="checkbox" id="log-error" checked> Error</label>
+    <button id="btn-toggle-log">展开日志</button>
     <button id="btn-clear-log">清空</button>
     <button id="btn-export-log">导出日志</button>
   </div>
@@ -2684,9 +2714,15 @@ async function signOpenApiRequest() {
   };
 }
 
-async function previewOpenApiRequest() {
+function setOpenApiPreviewVisible(visible) {
+  const details = document.getElementById('openapi-preview-details');
+  if (details) details.open = visible;
+}
+
+async function previewOpenApiRequest(options = {}) {
   try {
     const signed = await signOpenApiRequest();
+    if (options.show) setOpenApiPreviewVisible(true);
     document.getElementById('openapi-preview').textContent = maskOpenApiSecrets({
       method: signed.method,
       url: signed.url,
@@ -2697,6 +2733,7 @@ async function previewOpenApiRequest() {
     log(`OpenAPI 请求预览已生成: ${signed.service}.${signed.action}`, 'success');
     return signed;
   } catch (err) {
+    if (options.show) setOpenApiPreviewVisible(true);
     document.getElementById('openapi-preview').textContent = `Error: ${err.message || err}`;
     log(`OpenAPI 请求预览失败: ${err.message || err}`, 'error');
     throw err;
@@ -2745,7 +2782,7 @@ async function sendOpenApiRequest() {
 
 async function copyOpenApiCurl() {
   try {
-    const signed = await previewOpenApiRequest();
+    const signed = await previewOpenApiRequest({ show: true });
     const headerLines = Object.entries(signed.headers)
       .map(([key, value]) => `  -H '${key}: ${value}' \\`)
       .join('\n');
@@ -2822,7 +2859,7 @@ document.getElementById('btn-live-mount').addEventListener('click', () => {
   mountEnterpriseLiveRoom().catch(() => {});
 });
 document.getElementById('btn-live-destroy').addEventListener('click', () => destroyEnterpriseLiveRoom());
-document.getElementById('btn-openapi-sign').addEventListener('click', () => previewOpenApiRequest().catch(() => {}));
+document.getElementById('btn-openapi-sign').addEventListener('click', () => previewOpenApiRequest({ show: true }).catch(() => {}));
 document.getElementById('btn-openapi-send').addEventListener('click', () => sendOpenApiRequest());
 document.getElementById('openapi-result-view-tree').addEventListener('click', () => setOpenApiResultMode('tree'));
 document.getElementById('openapi-result-view-text').addEventListener('click', () => setOpenApiResultMode('text'));
@@ -2888,6 +2925,10 @@ document.getElementById('btn-stats-poll').addEventListener('click', function() {
 });
 document.getElementById('btn-clear-log').addEventListener('click', () => {
   document.getElementById('log-output').innerHTML = '';
+});
+document.getElementById('btn-toggle-log').addEventListener('click', function() {
+  document.body.classList.toggle('log-expanded');
+  this.textContent = document.body.classList.contains('log-expanded') ? '收起日志' : '展开日志';
 });
 document.getElementById('btn-export-log').addEventListener('click', () => {
   const text = document.getElementById('log-output').innerText;
